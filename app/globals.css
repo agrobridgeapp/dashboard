@@ -1,0 +1,229 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* AgroBridge Brand Color Palette - Institutional, Infrastructure-Grade */
+:root {
+  /* Core brand colors from brand guidelines */
+  --brand-deep-forest: #0f3d2e;
+  --brand-charcoal: #1c1f23;
+  --brand-soft-sand: #f5f3ee;
+  --brand-stone-grey: #c8cdc8;
+  --brand-muted-copper: #b87333;
+  --brand-olive-accent: #6b8e23;
+
+  /* Updated to use official AgroBridge brand colors */
+  --background: #f5f3ee;
+  --foreground: #1c1f23;
+  --card: #ffffff;
+  --card-foreground: #1c1f23;
+  --popover: #ffffff;
+  --popover-foreground: #1c1f23;
+
+  /* Primary uses Deep Forest Green */
+  --primary: #0f3d2e;
+  --primary-foreground: #f5f3ee;
+
+  /* Secondary uses soft tones */
+  --secondary: #f5f3ee;
+  --secondary-foreground: #0f3d2e;
+
+  /* Neutral grays for enterprise feel */
+  --muted: #f5f3ee;
+  --muted-foreground: #6b7280;
+  --accent: #f5f3ee;
+  --accent-foreground: #0f3d2e;
+
+  /* Subdued destructive color per spec */
+  --destructive: #9b2c2c;
+  --destructive-foreground: #ffffff;
+
+  --border: #c8cdc8;
+  --input: #c8cdc8;
+  --ring: #0f3d2e;
+
+  /* Charts use monochrome/single-accent per spec */
+  --chart-1: #0f3d2e;
+  --chart-2: #c8cdc8;
+  --chart-3: #6b8e23;
+  --chart-4: #1c1f23;
+  --chart-5: #f5f3ee;
+
+  --radius: 0.5rem;
+
+  /* Sidebar uses Deep Forest Green background per spec */
+  --sidebar: #0f3d2e;
+  --sidebar-foreground: #f5f3ee;
+  --sidebar-primary: #f5f3ee;
+  --sidebar-primary-foreground: #0f3d2e;
+  --sidebar-accent: rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground: #f5f3ee;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #f5f3ee;
+  --sidebar-muted: rgba(255, 255, 255, 0.6);
+}
+
+.dark {
+  --background: #1c1f23;
+  --foreground: #f5f3ee;
+  --card: #252830;
+  --card-foreground: #f5f3ee;
+  --popover: #252830;
+  --popover-foreground: #f5f3ee;
+  --primary: #6b8e23;
+  --primary-foreground: #1c1f23;
+  --secondary: #2d3138;
+  --secondary-foreground: #f5f3ee;
+  --muted: #2d3138;
+  --muted-foreground: #9ca3af;
+  --accent: #2d3138;
+  --accent-foreground: #f5f3ee;
+  --destructive: #9b2c2c;
+  --destructive-foreground: #ffffff;
+  --border: #374151;
+  --input: #374151;
+  --ring: #6b8e23;
+  --chart-1: #6b8e23;
+  --chart-2: #c8cdc8;
+  --chart-3: #0f3d2e;
+  --chart-4: #f5f3ee;
+  --chart-5: #b87333;
+  --sidebar: #252830;
+  --sidebar-foreground: #f5f3ee;
+  --sidebar-primary: #6b8e23;
+  --sidebar-primary-foreground: #1c1f23;
+  --sidebar-accent: #2d3138;
+  --sidebar-accent-foreground: #f5f3ee;
+  --sidebar-border: #374151;
+  --sidebar-ring: #6b8e23;
+  --sidebar-muted: #9ca3af;
+}
+
+@theme inline {
+  /* Premium typography setup */
+  --font-sans: "Inter", "Inter Fallback", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
+
+  /* Color mappings */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Brand color utilities */
+  --color-brand-forest: #0f3d2e;
+  --color-brand-charcoal: #1c1f23;
+  --color-brand-sand: #f5f3ee;
+  --color-brand-stone: #c8cdc8;
+  --color-brand-copper: #b87333;
+  --color-brand-olive: #6b8e23;
+
+  /* Modern radius scale */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted: var(--sidebar-muted);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Add hand cursor to all interactive elements */
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  [role="button"],
+  [role="link"],
+  [role="menuitem"],
+  [role="tab"],
+  [role="switch"],
+  select,
+  [onclick] {
+    @apply cursor-pointer;
+  }
+
+  /* Premium text rendering and spacing */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply tracking-tight font-semibold;
+    text-wrap: balance;
+  }
+
+  /* Better paragraph spacing */
+  p {
+    @apply leading-relaxed;
+    text-wrap: pretty;
+  }
+}
+
+/* Custom animations - subtle, predictable transitions only */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}

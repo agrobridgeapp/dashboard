@@ -1,0 +1,224 @@
+// Prisma schema for AgroBridge production database
+// This schema mirrors the TypeScript types in lib/data/types.ts
+// Models are conservative and focus on core entities
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core tenant model for multi-tenancy
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   // "demo" | "production"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  farmers  Farmer[]
+  contracts Contract[]
+  
+  @@map("tenants")
+}
+
+// User authentication and roles
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  role         String   // "farmer" | "agent" | "offtaker" | "partner" | "coordinator" | "admin"
+  phone        String?
+  tenantId     String
+  isDemo       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+// Farmers registered in the system
+model Farmer {
+  id                String   @id @default(cuid())
+  firstName         String
+  lastName          String
+  phone             String
+  village           String
+  lga               String
+  state             String
+  farmingExperience String
+  agentId           String
+  tenantId          String
+  totalLandHectares Float?
+  crops             String[] // Array of crop names
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  landPlots    LandPlot[]
+  cropCycles   CropCycle[]
+  serviceEvents ServiceEvent[]
+  deliveries   Delivery[]
+
+  @@index([tenantId])
+  @@index([agentId])
+  @@map("farmers")
+}
+
+// Land plots owned/managed by farmers
+model LandPlot {
+  id              String   @id @default(cuid())
+  farmerId        String
+  plotNumber      String
+  sizeHectares    Float
+  soilType        String?
+  irrigationType  String?
+  latitude        Float?
+  longitude       Float?
+  tenantId        String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  farmer     Farmer      @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  cropCycles CropCycle[]
+
+  @@index([farmerId])
+  @@index([tenantId])
+  @@map("land_plots")
+}
+
+// Crop growing cycles
+model CropCycle {
+  id                String   @id @default(cuid())
+  farmerId          String
+  landPlotId        String
+  cropType          String
+  season            String
+  plantingDate      DateTime
+  expectedHarvestDate DateTime
+  actualHarvestDate DateTime?
+  status            String   // "planning" | "planted" | "growing" | "harvesting" | "completed"
+  yieldTons         Float?
+  tenantId          String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  farmer   Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  landPlot LandPlot @relation(fields: [landPlotId], references: [id], onDelete: Cascade)
+
+  @@index([farmerId])
+  @@index([tenantId])
+  @@map("crop_cycles")
+}
+
+// Service events (advisory, inputs, etc.)
+model ServiceEvent {
+  id            String   @id @default(cuid())
+  farmerId      String
+  serviceType   String   // "advisory" | "input_delivery" | "training" | "quality_check"
+  status        String   // "scheduled" | "completed" | "cancelled"
+  scheduledDate DateTime
+  completedDate DateTime?
+  notes         String?
+  agentId       String
+  tenantId      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  farmer Farmer @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@index([farmerId])
+  @@index([tenantId])
+  @@map("service_events")
+}
+
+// Contracts between offtakers and farmer clusters
+model Contract {
+  id                      String   @id @default(cuid())
+  contractNumber          String   @unique
+  offtakerId              String
+  cropType                String
+  season                  String
+  contractedVolumeTons    Float
+  deliveredVolumeTons     Float    @default(0)
+  pricePerTon             Float
+  totalValue              Float
+  startDate               DateTime
+  endDate                 DateTime
+  deliveryStartDate       DateTime
+  deliveryEndDate         DateTime
+  status                  String   // "draft" | "active" | "completed" | "cancelled"
+  qualityGrade            String?
+  moistureContent         Float?
+  farmerClusterCount      Int
+  corridorId              String
+  tenantId                String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deliveries Delivery[]
+
+  @@index([tenantId])
+  @@index([offtakerId])
+  @@map("contracts")
+}
+
+// Deliveries against contracts
+model Delivery {
+  id                String   @id @default(cuid())
+  contractId        String
+  farmerId          String
+  quantityTons      Float
+  qualityGrade      String
+  moistureContent   Float?
+  deliveryDate      DateTime
+  status            String   // "pending" | "in_transit" | "delivered" | "verified"
+  vehicleNumber     String?
+  driverName        String?
+  driverPhone       String?
+  warehouseLocation String?
+  verifiedBy        String?
+  verifiedAt        DateTime?
+  tenantId          String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  farmer   Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@index([contractId])
+  @@index([farmerId])
+  @@index([tenantId])
+  @@map("deliveries")
+}
+
+// Planning interests submitted by offtakers
+model PlanningInterest {
+  id                String   @id @default(cuid())
+  offtakerId        String
+  cropType          String
+  estimatedVolumeTons Float
+  targetSeason      String
+  targetPrice       Float?
+  preferredCorridor String?
+  status            String   // "submitted" | "reviewed" | "approved" | "declined"
+  notes             String?
+  tenantId          String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([offtakerId])
+  @@index([tenantId])
+  @@map("planning_interests")
+}
