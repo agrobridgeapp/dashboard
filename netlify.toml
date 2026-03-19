@@ -1,0 +1,9 @@
+[build]
+  command = "pnpm install && pnpm db:generate && pnpm next build --no-turbopack"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

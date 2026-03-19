@@ -9,6 +9,7 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
+  turbopack: false,
 }
 
 export default nextConfig
