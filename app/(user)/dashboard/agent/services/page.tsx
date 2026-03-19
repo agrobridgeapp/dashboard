@@ -30,7 +30,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
 
 export default function AgentServicesPage() {
   const [services, setServices] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true) 
 
   const fetchServices = useCallback(async () => {
     setIsLoading(true)
