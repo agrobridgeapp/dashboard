@@ -1,3 +1,4 @@
+"use client"
 import { useState, useEffect, useCallback } from "react"
 import { DashboardLayout } from "@/components/dashboard/shared/dashboard-layout"
 import { Card, CardContent } from "@/components/ui/card"
