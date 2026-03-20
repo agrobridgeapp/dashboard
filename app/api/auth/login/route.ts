@@ -3,7 +3,7 @@ import { loginSchema } from "@/lib/validation/schemas"
 import { validateRequest, isValidationError } from "@/lib/validation/middleware"
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response-helpers"
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/api$/, "")
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api$/, "")
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { createSuccessResponse, createErrorResponse } from "@/lib/api/response-helpers"
 
-const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api").replace(/\/api$/, "")
+const BACKEND_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api$/, "")
 
 /**
  * POST /api/admin/login
