@@ -1,6 +1,8 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
+import { useAuth } from "../auth-context"
+import { isAdminRole } from "../auth/role-constants"
 import type {
   Farmer,
   LandPlot,
@@ -19,10 +21,6 @@ import type {
   ServiceEventStatus,
   FarmerStatus,
 } from "./types"
-
-// =====================================================
-// API CONFIGURATION
-// =====================================================
 
 const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api$/, "")
 
@@ -473,6 +471,7 @@ const DataStoreContext = createContext<DataStoreContextType>({
 // =====================================================
 
 export function DataStoreProvider({ children }: { children: ReactNode }) {
+  const { user, isLoading: authLoading } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [farmers, setFarmers] = useState<Farmer[]>([])
   const [landPlots, setLandPlots] = useState<LandPlot[]>([])
@@ -489,9 +488,16 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   const [seasons, setSeasons] = useState<Season[]>([])
   const [metrics, setMetrics] = useState<CorridorMetrics>(DEFAULT_METRICS)
 
-  // Load all data from backend APIs on mount
+  // Load all data from backend APIs on mount (Admin only)
   useEffect(() => {
     async function loadAll() {
+      // Guard: Only load if auth is finished, user is present, and user is an admin
+      if (authLoading || !user || !isAdminRole(user.role)) {
+        if (!authLoading) setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
       try {
         const [
           farmersRes, landPlotsRes, cropCyclesRes, serviceEventsRes,
@@ -566,7 +572,26 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     }
 
     loadAll()
-  }, [])
+  }, [user, authLoading])
+
+  // Clear data on logout
+  useEffect(() => {
+    if (!user && !authLoading) {
+      setFarmers([])
+      setLandPlots([])
+      setCropCycles([])
+      setServiceEvents([])
+      setContracts([])
+      setPartners([])
+      setFieldAgents([])
+      setDeliveries([])
+      setPayments([])
+      setCorridors([])
+      setSeasons([])
+      setMetrics(DEFAULT_METRICS)
+      setIsLoading(false)
+    }
+  }, [user, authLoading])
 
   // =====================================================
   // MUTATIONS (optimistic + API call)
