@@ -102,6 +102,12 @@ class APIClient {
         current_password: currentPassword,
         new_password: newPassword,
       }),
+
+    forgotPassword: (email: string) =>
+      this.post<{ success: boolean; message?: string; error?: string }>("/auth/forgot-password", { email }),
+
+    resetPassword: (password: string, token: string) =>
+      this.post<{ success: boolean; message?: string; error?: string }>("/auth/reset-password", { password, token }),
   }
 
   // Farmers API
