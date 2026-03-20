@@ -21,6 +21,12 @@ import type {
 } from "./types"
 
 // =====================================================
+// API CONFIGURATION
+// =====================================================
+
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/api$/, "")
+
+// =====================================================
 // SNAKE → CAMEL CONVERSION UTILITIES
 // =====================================================
 
@@ -492,17 +498,17 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           contractsRes, partnersRes, agentsRes, deliveriesRes,
           paymentsRes, corridorsRes, seasonsRes,
         ] = await Promise.allSettled([
-          fetch("/api/farmers").then((r) => r.json()),
-          fetch("/api/land-plots").then((r) => r.json()),
-          fetch("/api/crop-cycles").then((r) => r.json()),
-          fetch("/api/service-events").then((r) => r.json()),
-          fetch("/api/contracts").then((r) => r.json()),
-          fetch("/api/partners").then((r) => r.json()),
-          fetch("/api/agents").then((r) => r.json()),
-          fetch("/api/deliveries").then((r) => r.json()),
-          fetch("/api/payments").then((r) => r.json()),
-          fetch("/api/corridors").then((r) => r.json()),
-          fetch("/api/seasons").then((r) => r.json()),
+          fetch(BASE_URL + "/api/farmers").then((r) => r.json()),
+          fetch(BASE_URL + "/api/land-plots").then((r) => r.json()),
+          fetch(BASE_URL + "/api/crop-cycles").then((r) => r.json()),
+          fetch(BASE_URL + "/api/service-events").then((r) => r.json()),
+          fetch(BASE_URL + "/api/contracts").then((r) => r.json()),
+          fetch(BASE_URL + "/api/partners").then((r) => r.json()),
+          fetch(BASE_URL + "/api/agents").then((r) => r.json()),
+          fetch(BASE_URL + "/api/deliveries").then((r) => r.json()),
+          fetch(BASE_URL + "/api/payments").then((r) => r.json()),
+          fetch(BASE_URL + "/api/corridors").then((r) => r.json()),
+          fetch(BASE_URL + "/api/seasons").then((r) => r.json()),
         ])
 
         const safe = (result: PromiseSettledResult<any>, key = "data"): any[] => {
@@ -533,7 +539,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
 
         // Build metrics from admin stats if available
         try {
-          const statsRes = await fetch("/api/admin/stats")
+          const statsRes = await fetch(BASE_URL + "/api/admin/stats")
           if (statsRes.ok) {
             const statsJson = await statsRes.json()
             const s = statsJson.data || statsJson
@@ -573,7 +579,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString()
     const newFarmer: Farmer = { ...farmerData, id: tempId, createdAt: now, updatedAt: now }
     setFarmers((prev) => [...prev, newFarmer])
-    fetch("/api/farmers", {
+    fetch(BASE_URL + "/api/farmers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(farmerData),
@@ -593,7 +599,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     setFarmers((prev) =>
       prev.map((f) => (f.id === farmerId ? { ...f, status, updatedAt: new Date().toISOString() } : f)),
     )
-    fetch(`/api/farmers/${farmerId}`, {
+    fetch(BASE_URL + `/api/farmers/${farmerId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
@@ -604,7 +610,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     setFarmers((prev) =>
       prev.map((f) => (f.id === farmerId ? { ...f, ...updates, updatedAt: new Date().toISOString() } : f)),
     )
-    fetch(`/api/farmers/${farmerId}`, {
+    fetch(BASE_URL + `/api/farmers/${farmerId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
@@ -620,7 +626,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
     const now = new Date().toISOString()
     const newPlot: LandPlot = { ...plotData, id: tempId, createdAt: now, updatedAt: now }
     setLandPlots((prev) => [...prev, newPlot])
-    fetch("/api/land-plots", {
+    fetch(BASE_URL + "/api/land-plots", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(plotData),
@@ -644,7 +650,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString()
       const newCycle: CropCycle = { ...cycleData, id: tempId, serviceEvents: [], createdAt: now, updatedAt: now }
       setCropCycles((prev) => [...prev, newCycle])
-      fetch("/api/crop-cycles", {
+      fetch(BASE_URL + "/api/crop-cycles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(cycleData),
@@ -671,7 +677,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString()
       const newEvent: ServiceEvent = { ...eventData, id: tempId, createdAt: now, updatedAt: now }
       setServiceEvents((prev) => [...prev, newEvent])
-      fetch("/api/service-events", {
+      fetch(BASE_URL + "/api/service-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(eventData),
@@ -694,7 +700,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       setServiceEvents((prev) =>
         prev.map((e) => (e.id === eventId ? { ...e, ...data, status, updatedAt: new Date().toISOString() } : e)),
       )
-      fetch(`/api/service-events/${eventId}`, {
+      fetch(BASE_URL + `/api/service-events/${eventId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, ...data }),
@@ -711,7 +717,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           : e,
       ),
     )
-    fetch(`/api/service-events/${eventId}`, {
+    fetch(BASE_URL + `/api/service-events/${eventId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assigned_partner_id: partnerId, assigned_partner_name: partnerName, status: "scheduled" }),
@@ -735,7 +741,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString()
       const newContract: OfftakeContract = { ...contractData, id: tempId, createdAt: now, updatedAt: now }
       setContracts((prev) => [...prev, newContract])
-      fetch("/api/contracts", {
+      fetch(BASE_URL + "/api/contracts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(contractData),
@@ -761,7 +767,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           : c,
       ),
     )
-    fetch(`/api/contracts/${contractId}`, {
+    fetch(BASE_URL + `/api/contracts/${contractId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ farmer_ids: farmerIds, crop_cycle_ids: cycleIds }),
@@ -782,7 +788,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
           : c,
       ),
     )
-    fetch("/api/deliveries", {
+    fetch(BASE_URL + "/api/deliveries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(deliveryData),
@@ -803,7 +809,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
       setDeliveries((prev) =>
         prev.map((d) => (d.id === deliveryId ? { ...d, ...data, status, updatedAt: new Date().toISOString() } : d)),
       )
-      fetch(`/api/deliveries/${deliveryId}`, {
+      fetch(BASE_URL + `/api/deliveries/${deliveryId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, ...data }),
@@ -852,7 +858,7 @@ export function DataStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshMetrics = useCallback(() => {
-    fetch("/api/admin/stats")
+    fetch(BASE_URL + "/api/admin/stats")
       .then((r) => r.json())
       .then((json) => {
         const s = json.data || json
