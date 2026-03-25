@@ -16,6 +16,7 @@ export const USER_ROLES = [
   "farmer",
   "partner",
   "offtaker",
+  "aggregator",
 ] as const
 
 export type AdminRole = (typeof ADMIN_ROLES)[number]
@@ -40,4 +41,5 @@ export const DASHBOARD_ROUTES: Record<AnyRole, string> = {
   farmer: "/dashboard/farmer",
   partner: "/dashboard/partner",
   offtaker: "/dashboard/offtaker",
+  aggregator: "/dashboard/aggregator",
 }
