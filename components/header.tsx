@@ -42,7 +42,7 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center">
             <Image
-              src="/logo-white.png"
+              src="/agrobridge-wordmark-clean.png"
               alt="AgroBridge"
               width={220}
               height={52}
