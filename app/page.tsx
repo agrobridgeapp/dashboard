@@ -1,34 +1,33 @@
 import { Header } from "@/components/header"
 import { HeroB2B } from "@/components/hero-b2b"
-import { StatsSection } from "@/components/stats-section"
+import { TrustBar } from "@/components/trust-bar"
 import { BuyerProblemSection } from "@/components/buyer-problem-section"
+import { SolutionSection } from "@/components/solution-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
-import { WhyDifferentSection } from "@/components/why-different-section"
+import { TractionSection } from "@/components/traction-section"
 import { ComparisonSection } from "@/components/comparison-section"
-import { WhoWeWorkWithSection } from "@/components/who-we-work-with-section"
-import { CredibilitySection } from "@/components/credibility-section"
-import { ImpactSection } from "@/components/impact-section"
-import { MarketIntelSection } from "@/components/market-intel-section"
+import { ModelSection } from "@/components/model-section"
+import { WhyThisMattersSection } from "@/components/why-this-matters-section"
+import { WhoThisIsForSection } from "@/components/who-this-is-for-section"
 import { ContactSection } from "@/components/contact-section"
 import { FinalCTASection } from "@/components/final-cta-section"
 import { FooterB2B } from "@/components/footer-b2b"
 
 export default function HomePage() {
-
   return (
     <>
       <Header />
       <main>
         <HeroB2B />
-        <StatsSection />
+        <TrustBar />
         <BuyerProblemSection />
+        <SolutionSection />
         <HowItWorksSection />
-        <WhyDifferentSection />
+        <TractionSection />
         <ComparisonSection />
-        <WhoWeWorkWithSection />
-        <CredibilitySection />
-        <ImpactSection />
-        <MarketIntelSection />
+        <ModelSection />
+        <WhyThisMattersSection />
+        <WhoThisIsForSection />
         <ContactSection />
         <FinalCTASection />
       </main>
