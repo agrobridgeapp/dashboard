@@ -47,7 +47,7 @@ export default function AdminLoginPage() {
 
           <div className="flex items-center gap-3">
             <Image
-              src="/logo-white.png"
+              src="/agrobridge-wordmark-clean.png"
               alt="AgroBridge"
               width={400}
               height={100}
