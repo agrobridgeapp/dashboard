@@ -95,7 +95,7 @@ export function FooterB2B() {
         <div className="pt-8 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-5">
             <Image
-              src="/agrobridge-wordmark-clean.png"
+              src="/logo-white.png"
               alt="AgroBridge"
               width={180}
               height={42}
