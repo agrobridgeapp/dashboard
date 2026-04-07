@@ -19,16 +19,6 @@ export function Header() {
   }, [])
 
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setMobileMenuOpen(false)
-      }
-    }
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [])
-
-  useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = "hidden"
     } else {
@@ -42,112 +32,120 @@ export function Header() {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-[#F5F3EE]/95 backdrop-blur-md border-b border-[#C8CDC8] shadow-sm" : "bg-transparent"
+        scrolled 
+          ? "bg-white border-b border-gray-200 shadow-sm" 
+          : "bg-transparent"
       }`}
     >
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16 lg:h-18">
-          <Link href="/" className="flex items-center -ml-1 sm:-ml-2 lg:-ml-3">
+      <nav className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-24 lg:h-28">
+          {/* Logo */}
+          <Link href="/" className="flex items-center">
             <Image
-              src={scrolled ? "/logo.png" : "/logo-white.png"}
+              src="/agrobridge-wordmark-clean.png"
               alt="AgroBridge"
-              width={300}
-              height={75}
-              className="w-[140px] sm:w-[180px] lg:w-[240px] h-auto"
+              width={220}
+              height={52}
+              className={`h-10 lg:h-12 w-auto object-contain transition-all ${scrolled ? "" : "brightness-0 invert"}`}
               priority
             />
           </Link>
 
-          <div className="hidden md:flex items-center gap-6 lg:gap-10">
+          {/* Desktop Nav */}
+          <div className="hidden md:flex items-center gap-8">
             <Link
               href="#problem"
-              className={`text-sm lg:text-base font-semibold transition-colors ${scrolled ? "text-[#1C1F23] hover:text-[#1C1F23]/80" : "text-white hover:text-white/90"}`}
+              className={`text-sm font-medium transition-colors ${
+                scrolled ? "text-gray-600 hover:text-gray-900" : "text-white/80 hover:text-white"
+              }`}
             >
-              The Problem
+              Problem
             </Link>
             <Link
               href="#approach"
-              className={`text-sm lg:text-base font-semibold transition-colors ${scrolled ? "text-[#1C1F23] hover:text-[#1C1F23]/80" : "text-white hover:text-white/90"}`}
+              className={`text-sm font-medium transition-colors ${
+                scrolled ? "text-gray-600 hover:text-gray-900" : "text-white/80 hover:text-white"
+              }`}
             >
-              Our Approach
+              How It Works
             </Link>
             <Link
-              href="#partners"
-              className={`text-sm lg:text-base font-semibold transition-colors ${scrolled ? "text-[#1C1F23] hover:text-[#1C1F23]/80" : "text-white hover:text-white/90"}`}
+              href="#for"
+              className={`text-sm font-medium transition-colors ${
+                scrolled ? "text-gray-600 hover:text-gray-900" : "text-white/80 hover:text-white"
+              }`}
             >
-              Who We Work With
+              Who It's For
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center gap-3 lg:gap-4">
-            <Button
-              variant="ghost"
-              asChild
-              className={`text-sm lg:text-base ${scrolled ? "text-[#1C1F23] hover:text-[#1C1F23]" : "text-white hover:text-white/90"}`}
+          {/* Desktop CTA */}
+          <div className="hidden md:flex items-center gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              asChild 
+              className={`transition-colors ${
+                scrolled ? "text-gray-600 hover:text-gray-900" : "text-white/80 hover:text-white hover:bg-white/10"
+              }`}
             >
               <Link href="/login">Log in</Link>
             </Button>
-            <Button
-              asChild
-              className={`text-sm lg:text-base px-4 lg:px-6 py-2 lg:py-2.5 ${
-                scrolled
-                  ? "bg-[#0F3D2E] text-[#F5F3EE] hover:bg-[#0F3D2E]/90"
-                  : "bg-white text-[#0F3D2E] hover:bg-white/90"
+            <Button 
+              size="sm" 
+              asChild 
+              className={`transition-colors ${
+                scrolled 
+                  ? "bg-[#0f3d2e] hover:bg-[#0a2d21] text-white" 
+                  : "bg-white text-[#0f3d2e] hover:bg-white/90"
               }`}
             >
-              <Link href="#contact">Discuss Supply</Link>
+              <Link href="#contact">Get Started</Link>
             </Button>
           </div>
 
+          {/* Mobile Menu Button */}
           <button
-            className={`md:hidden p-3 -mr-2 min-w-[44px] min-h-[44px] flex items-center justify-center ${scrolled ? "text-[#1C1F23]" : "text-white"}`}
+            className={`md:hidden p-2 transition-colors ${scrolled ? "text-gray-600" : "text-white"}`}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
+        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 top-16 bg-white z-40 overflow-y-auto">
-            <div className="flex flex-col p-6 space-y-2">
+          <div className="md:hidden fixed inset-0 top-16 lg:top-20 bg-white z-40">
+            <div className="flex flex-col p-6">
               <Link
                 href="#problem"
-                className="text-lg text-[#1C1F23] font-medium py-4 px-2 border-b border-[#C8CDC8]/50 active:bg-[#F5F3EE] rounded-lg"
+                className="py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                The Problem
+                Problem
               </Link>
               <Link
                 href="#approach"
-                className="text-lg text-[#1C1F23] font-medium py-4 px-2 border-b border-[#C8CDC8]/50 active:bg-[#F5F3EE] rounded-lg"
+                className="py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Our Approach
+                How It Works
               </Link>
               <Link
-                href="#partners"
-                className="text-lg text-[#1C1F23] font-medium py-4 px-2 border-b border-[#C8CDC8]/50 active:bg-[#F5F3EE] rounded-lg"
+                href="#for"
+                className="py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Who We Work With
+                Who It's For
               </Link>
 
-              <div className="flex flex-col gap-3 pt-6 mt-4">
-                <Button
-                  variant="outline"
-                  asChild
-                  className="w-full h-12 text-base bg-transparent"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
+              <div className="flex flex-col gap-3 mt-6">
+                <Button variant="outline" asChild className="w-full" onClick={() => setMobileMenuOpen(false)}>
                   <Link href="/login">Log in</Link>
                 </Button>
-                <Button
-                  asChild
-                  className="w-full h-12 text-base bg-[#0F3D2E] text-[#F5F3EE] hover:bg-[#0F3D2E]/90"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Link href="#contact">Discuss Supply</Link>
+                <Button asChild className="w-full bg-[#0f3d2e] hover:bg-[#0a2d21] text-white" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="#contact">Get Started</Link>
                 </Button>
               </div>
             </div>

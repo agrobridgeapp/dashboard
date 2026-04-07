@@ -1,62 +1,54 @@
-import { AlertTriangle, Eye, DollarSign, TrendingDown, Package } from "lucide-react"
+import { Layers, Scale, Clock } from "lucide-react"
 
 const problems = [
   {
-    icon: TrendingDown,
-    title: "Fragmented Farmer Supply",
-    description: "Production is scattered across thousands of smallholders with no coordination or aggregation.",
+    icon: Layers,
+    title: "Fragmented supply",
+    description: "Thousands of small producers, no coordination",
   },
   {
-    icon: Package,
-    title: "Inconsistent Quality",
-    description: "Without standards enforcement at source, quality varies unpredictably across deliveries.",
+    icon: Scale,
+    title: "Inconsistent quality",
+    description: "Every batch is different",
   },
   {
-    icon: AlertTriangle,
-    title: "Missed Delivery Timelines",
-    description: "Poor coordination between production and logistics leads to delayed or failed deliveries.",
-  },
-  {
-    icon: DollarSign,
-    title: "High Coordination Costs",
-    description: "Managing dozens of suppliers, agents, and logistics partners is expensive and inefficient.",
-  },
-  {
-    icon: Eye,
-    title: "Poor Ground Visibility",
-    description: "No insight into what's happening on farms until produce arrives—or doesn't.",
+    icon: Clock,
+    title: "Unreliable delivery",
+    description: "Timelines constantly shift",
   },
 ]
 
 export function BuyerProblemSection() {
   return (
-    <section id="problem" className="py-20 lg:py-28 bg-white">
+    <section id="problem" className="bg-white py-20 lg:py-28">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mb-12 sm:mb-16">
-          <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">The Problem</p>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-neutral-900 mb-4 sm:mb-6 leading-tight">
-            Why Agricultural Sourcing Breaks Down
-          </h2>
-          <p className="text-base sm:text-lg text-neutral-600 leading-relaxed">
-            Most buyers struggle with the same challenges. As volumes increase, these problems compound—making reliable
-            sourcing nearly impossible without the right infrastructure.
-          </p>
-        </div>
+        <h2 className="text-3xl sm:text-4xl font-bold text-[#1c1f23] text-center mb-16">
+          Sourcing crops is still broken
+        </h2>
 
-        {/* Problems Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          {problems.map((problem, index) => (
-            <div
-              key={index}
-              className="p-5 sm:p-6 lg:p-8 bg-neutral-50 rounded-lg sm:rounded-xl border border-neutral-100 hover:border-neutral-200 hover:shadow-sm transition-all"
-            >
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg bg-red-50 flex items-center justify-center mb-4 sm:mb-5">
-                <problem.icon className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
+        <div className="grid md:grid-cols-3 gap-8 lg:gap-12 mb-16">
+          {problems.map((problem) => (
+            <div key={problem.title} className="text-center">
+              <div className="w-12 h-12 rounded-xl bg-[#f5f3ee] flex items-center justify-center mx-auto mb-4">
+                <problem.icon className="h-6 w-6 text-[#0f3d2e]" />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-neutral-900 mb-2">{problem.title}</h3>
-              <p className="text-sm sm:text-base text-neutral-600 leading-relaxed">{problem.description}</p>
+              <h3 className="text-lg font-semibold text-[#1c1f23] mb-2">
+                {problem.title}
+              </h3>
+              <p className="text-[#6b7280]">
+                {problem.description}
+              </p>
             </div>
           ))}
+        </div>
+
+        <div className="text-center">
+          <p className="text-lg text-[#6b7280] mb-2">
+            This is not a production problem.
+          </p>
+          <p className="text-xl font-semibold text-[#1c1f23]">
+            {"It's an execution problem."}
+          </p>
         </div>
       </div>
     </section>

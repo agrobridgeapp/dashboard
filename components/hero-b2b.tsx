@@ -26,15 +26,15 @@ export function HeroB2B() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.1] tracking-tight mb-6">
             Reliable crop supply for institutional buyers
           </h1>
-
+          
           <p className="text-lg sm:text-xl text-white/80 mb-4 leading-relaxed">
             Processors and exporters run below capacity because supply is unreliable.
           </p>
-
+          
           <p className="text-lg sm:text-xl text-white font-semibold mb-4">
             AgroBridge fixes that.
           </p>
-
+          
           <p className="text-base sm:text-lg text-white/70 mb-8 leading-relaxed">
             We coordinate sourcing, aggregation, and logistics — so you get consistent delivery.
           </p>
@@ -84,7 +84,7 @@ export function HeroB2B() {
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             <span className="text-sm text-white/80 font-medium">Live Coordination</span>
           </div>
-
+          
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-xs mb-1">
