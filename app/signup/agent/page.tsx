@@ -45,6 +45,12 @@ function AgentRegistrationForm() {
       return
     }
 
+    const phoneRegex = /^(\+234|0)[789]\d{9}$/
+    if (!phoneRegex.test(formData.phone.replace(/\s+/g, ""))) {
+      setError("Please enter a valid Nigerian phone number (e.g. 08012345678 or +2348012345678)")
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const res = await fetch("/api/auth/register", {
@@ -52,26 +58,30 @@ function AgentRegistrationForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role: "field_agent",
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
           phone: formData.phone,
           email: formData.email || undefined,
-          stateId: location.stateId,
-          lgaId: location.lgaId,
-          communityName: location.communityName || undefined,
-          metadata: {
-            education: formData.education,
-            experience: formData.experience,
-            farmingKnowledge: formData.farmingKnowledge,
-            hasBike: formData.hasBike,
-            hasSmartphone: formData.hasSmartphone,
-            motivation: formData.motivation,
-          },
+          state_id: location.stateId || undefined,
+          lga_id: location.lgaId || undefined,
+          community_name: location.communityName || undefined,
+          education: formData.education || undefined,
+          experience: formData.experience || undefined,
+          farming_knowledge: formData.farmingKnowledge || undefined,
+          has_bike: formData.hasBike || false,
+          has_smartphone: formData.hasSmartphone || false,
+          motivation: formData.motivation || undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || "Registration failed")
+        const rawError = data.error || "Registration failed"
+        const friendlyError = rawError
+          .replace(/\bfirst_name\b/g, "First Name")
+          .replace(/\blast_name\b/g, "Last Name")
+          .replace(/\bphone\b/g, "Phone Number")
+          .replace(/\brole\b/g, "Role")
+        setError(friendlyError)
         return
       }
       setSubmitted(true)

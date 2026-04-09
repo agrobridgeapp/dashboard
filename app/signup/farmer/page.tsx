@@ -38,6 +38,12 @@ function FarmerRegistrationForm() {
       return
     }
 
+    const phoneRegex = /^(\+234|0)[789]\d{9}$/
+    if (!phoneRegex.test(formData.phone.replace(/\s+/g, ""))) {
+      setError("Please enter a valid Nigerian phone number (e.g. 08012345678 or +2348012345678)")
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const res = await fetch("/api/auth/register", {
@@ -45,15 +51,15 @@ function FarmerRegistrationForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role: "farmer",
-          firstName: formData.firstName,
-          lastName: formData.lastName,
+          first_name: formData.firstName,
+          last_name: formData.lastName,
           phone: formData.phone,
-          stateId: location.stateId,
-          lgaId: location.lgaId,
-          communityName: location.communityName || undefined,
+          state_id: location.stateId || undefined,
+          lga_id: location.lgaId || undefined,
+          community_name: location.communityName || undefined,
+          farm_size: formData.farmSize ? Number(formData.farmSize) : undefined,
           metadata: {
             gender: formData.gender,
-            farmSize: formData.farmSize,
             stateName: location.stateName,
             lgaName: location.lgaName,
           },
@@ -61,7 +67,14 @@ function FarmerRegistrationForm() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || "Registration failed")
+        const rawError = data.error || "Registration failed"
+        // Replace raw API field names with user-friendly labels
+        const friendlyError = rawError
+          .replace(/\bfirst_name\b/g, "First Name")
+          .replace(/\blast_name\b/g, "Last Name")
+          .replace(/\bphone\b/g, "Phone Number")
+          .replace(/\brole\b/g, "Role")
+        setError(friendlyError)
         return
       }
       setSubmitted(true)
@@ -190,7 +203,7 @@ function FarmerRegistrationForm() {
               {/* Farm Size */}
               <div className="space-y-1.5">
                 <Label htmlFor="farmSize">Estimated Farm Size (Hectares)</Label>
-                <Input id="farmSize" type="number" step="0.1" value={formData.farmSize} onChange={(e) => updateField("farmSize", e.target.value)} placeholder="e.g. 3.5" />
+                <Input id="farmSize" type="number" step="0.1" min="0" value={formData.farmSize} onChange={(e) => updateField("farmSize", e.target.value)} placeholder="e.g. 3.5" />
               </div>
 
               {error && (

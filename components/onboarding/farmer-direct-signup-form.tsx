@@ -61,7 +61,13 @@ export function FarmerDirectSignupForm() {
       const data = await res.json()
 
       if (!res.ok || !data.success) {
-        setError(data.error || "Registration failed. Please try again.")
+        const rawError = data.error || "Registration failed. Please try again."
+        const friendlyError = rawError
+          .replace(/\bfirst_name\b/g, "First Name")
+          .replace(/\blast_name\b/g, "Last Name")
+          .replace(/\bphone\b/g, "Phone Number")
+          .replace(/\brole\b/g, "Role")
+        setError(friendlyError)
         return
       }
 
@@ -219,6 +225,7 @@ export function FarmerDirectSignupForm() {
               id="farmSize"
               type="number"
               step="0.1"
+              min="0"
               required
               placeholder="e.g., 2.5"
               value={formData.farmSizeHectares}

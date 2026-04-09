@@ -52,13 +52,13 @@ function AggregatorRegistrationForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role: "aggregator",
-          firstName: formData.contactName.split(" ")[0],
-          lastName: formData.contactName.split(" ").slice(1).join(" ") || formData.businessName,
+          first_name: formData.contactName.split(" ")[0],
+          last_name: formData.contactName.split(" ").slice(1).join(" ") || formData.businessName,
           phone: formData.phone,
           email: formData.email || undefined,
-          stateId: location.stateId,
-          lgaId: location.lgaId,
-          communityName: location.communityName || undefined,
+          state_id: location.stateId || undefined,
+          lga_id: location.lgaId || undefined,
+          community_name: location.communityName || undefined,
           metadata: {
             businessName: formData.businessName,
             yearsInOperation: formData.yearsInOperation,
@@ -72,7 +72,13 @@ function AggregatorRegistrationForm() {
       })
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || "Registration failed")
+        const rawError = data.error || "Registration failed"
+        const friendlyError = rawError
+          .replace(/\bfirst_name\b/g, "First Name")
+          .replace(/\blast_name\b/g, "Last Name")
+          .replace(/\bphone\b/g, "Phone Number")
+          .replace(/\brole\b/g, "Role")
+        setError(friendlyError)
         return
       }
       setSubmitted(true)
