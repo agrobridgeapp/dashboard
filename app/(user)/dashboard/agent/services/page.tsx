@@ -46,13 +46,29 @@ export default function AgentServicesPage() {
 
   useEffect(() => { fetchServices() }, [fetchServices])
 
-  const handleUpdateStatus = async (eventId: string, status: string, data?: any) => {
+  const handleStartService = async (eventId: string) => {
     try {
-      await apiClient.serviceEvents.update(eventId, { ...data, status })
-      setServices((prev) => prev.map((s) => s.id === eventId ? { ...s, ...data, status } : s))
-      toast.success(`Marked as ${status.replace("_", " ")}`)
+      const res = await apiClient.serviceEvents.start(eventId)
+      if (res.success) {
+        setServices((prev) => prev.map((s) => s.id === eventId ? { ...s, status: "in_progress" } : s))
+        toast.success("Service started")
+      }
     } catch {
-      toast.error("Failed to update status")
+      toast.error("Failed to start service")
+    }
+  }
+
+  const handleCompleteService = async (eventId: string) => {
+    try {
+      const res = await apiClient.serviceEvents.complete(eventId, {
+        notes: `Completed by agent on ${new Date().toLocaleDateString()}`,
+      })
+      if (res.success) {
+        setServices((prev) => prev.map((s) => s.id === eventId ? { ...s, status: "completed" } : s))
+        toast.success("Service marked as completed")
+      }
+    } catch {
+      toast.error("Failed to complete service")
     }
   }
 
@@ -120,7 +136,7 @@ export default function AgentServicesPage() {
                   size="sm"
                   variant="outline"
                   className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={(e) => { e.stopPropagation(); handleUpdateStatus(service.id, "in_progress", { actual_date: new Date().toISOString().split("T")[0] }) }}
+                  onClick={(e) => { e.stopPropagation(); handleStartService(service.id) }}
                 >
                   <Play className="h-3 w-3 mr-1" />
                   Start
@@ -131,7 +147,7 @@ export default function AgentServicesPage() {
                 <Button
                   size="sm"
                   className="h-8 text-xs"
-                  onClick={(e) => { e.stopPropagation(); handleUpdateStatus(service.id, "completed", { actual_date: new Date().toISOString().split("T")[0] }) }}
+                  onClick={(e) => { e.stopPropagation(); handleCompleteService(service.id) }}
                 >
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Complete

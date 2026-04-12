@@ -1,10 +1,8 @@
 "use client"
 
-import React from "react"
-
-import { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { DashboardLayout } from "@/components/dashboard/shared/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -28,95 +26,41 @@ import {
   MapPin,
   User,
   Calendar,
-  FileText,
   Search,
   Filter,
   ThumbsUp,
   ThumbsDown,
   Eye,
   ArrowRight,
+  Loader2,
+  RefreshCw,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { apiClient } from "@/lib/api-client"
 
-// Mock task requests from field agents
-const initialRequests = [
-  {
-    id: "req-001",
-    agentId: "agent-001",
-    agentName: "Blessing Okonkwo",
-    farmerName: "Audu Garba",
-    farmerId: "farmer-003",
-    corridor: "Kaduna North",
-    issueType: "mechanization",
-    urgency: "high",
-    description:
-      "Farmer needs urgent land preparation. Rains expected next week and farmer is worried about missing the planting window. Has 4.5 hectares ready for plowing.",
-    submittedAt: "2024-01-26T10:30:00Z",
-    status: "pending",
-  },
-  {
-    id: "req-002",
-    agentId: "agent-002",
-    agentName: "Chinedu Eze",
-    farmerName: "Bello Abubakar",
-    farmerId: "farmer-005",
-    corridor: "Kaduna North",
-    issueType: "inputs",
-    urgency: "medium",
-    description:
-      "Fertilizer delivery delayed. Farmer running low on NPK for second application. Needs 5 bags urgently to complete treatment on time.",
-    submittedAt: "2024-01-25T14:15:00Z",
-    status: "pending",
-  },
-  {
-    id: "req-003",
-    agentId: "agent-003",
-    agentName: "Amina Ibrahim",
-    farmerName: "Halima Mohammed",
-    farmerId: "farmer-004",
-    corridor: "Kaduna North",
-    issueType: "inspection",
-    urgency: "low",
-    description:
-      "Farmer reports possible pest infestation on maize crop. Requesting inspection to verify and determine appropriate treatment.",
-    submittedAt: "2024-01-24T09:45:00Z",
-    status: "pending",
-  },
-  {
-    id: "req-004",
-    agentId: "agent-001",
-    agentName: "Blessing Okonkwo",
-    farmerName: "Musa Abdullahi",
-    farmerId: "farmer-001",
-    corridor: "Kaduna North",
-    issueType: "logistics",
-    urgency: "high",
-    description:
-      "Harvest ready for transport to aggregation center. Approximately 15 tons of maize needs collection within 2 days to prevent quality loss.",
-    submittedAt: "2024-01-23T16:20:00Z",
-    status: "approved",
-    approvedAt: "2024-01-24T08:00:00Z",
-    approvedBy: "ops-admin",
-    taskId: "task-gen-001",
-  },
-  {
-    id: "req-005",
-    agentId: "agent-004",
-    agentName: "Yakubu Danladi",
-    farmerName: "Ibrahim Yusuf",
-    farmerId: "farmer-006",
-    corridor: "Kaduna North",
-    issueType: "other",
-    urgency: "low",
-    description: "Farmer requesting meeting to discuss next season planning and potential expansion.",
-    submittedAt: "2024-01-22T11:00:00Z",
-    status: "rejected",
-    rejectedAt: "2024-01-22T15:30:00Z",
-    rejectedBy: "ops-admin",
-    rejectionReason:
-      "This type of planning meeting can be conducted by the field agent directly. No service task required.",
-  },
-]
+interface TaskRequest {
+  id: string
+  agent_id: string
+  agent_user_id: string
+  agent_name: string
+  farmer_id?: string
+  farmer_name?: string
+  corridor_id?: string
+  corridor_name?: string
+  issue_type: string
+  urgency: string
+  title: string
+  description: string
+  status: string
+  reviewed_by?: string
+  reviewed_by_name?: string
+  reviewed_at?: string
+  review_notes?: string
+  rejection_reason?: string
+  service_event_id?: string
+  created_at: string
+  updated_at: string
+}
 
 const urgencyStyles: Record<string, string> = {
   high: "bg-red-100 text-red-700 border-red-200",
@@ -125,32 +69,21 @@ const urgencyStyles: Record<string, string> = {
 }
 
 const issueTypeLabels: Record<string, string> = {
-  land_prep: "Land Preparation",
-  inputs: "Inputs (Seeds/Fertilizer)",
   mechanization: "Mechanization",
-  logistics: "Logistics/Transport",
+  inputs: "Inputs (Seeds/Fertilizer)",
   inspection: "Inspection Required",
+  logistics: "Logistics/Transport",
+  pest_control: "Pest Control",
+  irrigation: "Irrigation",
+  storage: "Storage",
   other: "Other",
 }
 
-// Mock assignees
-const assignees = {
-  agents: [
-    { id: "agent-001", name: "Blessing Okonkwo", cluster: "Zaria Central" },
-    { id: "agent-002", name: "Chinedu Eze", cluster: "Zaria West" },
-    { id: "agent-003", name: "Amina Ibrahim", cluster: "Giwa East" },
-    { id: "agent-004", name: "Yakubu Danladi", cluster: "Igabi South" },
-  ],
-  partners: [
-    { id: "partner-001", name: "SwiftAgri Logistics", type: "logistics" },
-    { id: "partner-002", name: "FarmTech Mechanization", type: "mechanization" },
-    { id: "partner-003", name: "AgriPro Inputs Ltd", type: "inputs" },
-  ],
-}
-
 export default function TaskRequestsPage() {
-  const [requests, setRequests] = useState(initialRequests)
-  const [selectedRequest, setSelectedRequest] = useState<(typeof initialRequests)[0] | null>(null)
+  const [requests, setRequests] = useState<TaskRequest[]>([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, converted: 0, highUrgency: 0, total: 0 })
+  const [selectedRequest, setSelectedRequest] = useState<TaskRequest | null>(null)
   const [approveDialogOpen, setApproveDialogOpen] = useState(false)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
@@ -159,57 +92,73 @@ export default function TaskRequestsPage() {
   const [filterUrgency, setFilterUrgency] = useState<string>("all")
   const { toast } = useToast()
 
+  const fetchRequests = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [reqRes, statsRes] = await Promise.all([
+        apiClient.taskRequests.list({ search: searchQuery || undefined, urgency: filterUrgency !== "all" ? filterUrgency : undefined }),
+        apiClient.taskRequests.stats(),
+      ])
+
+      if (reqRes.success) {
+        setRequests(reqRes.data || [])
+      }
+      if (statsRes.success && statsRes.data) {
+        const sc = statsRes.data.statusCounts || {}
+        const uc = statsRes.data.urgencyCounts || {}
+        setStats({
+          pending: sc.pending || 0,
+          approved: (sc.approved || 0) + (sc.converted || 0),
+          rejected: sc.rejected || 0,
+          converted: sc.converted || 0,
+          highUrgency: uc.high || 0,
+          total: statsRes.data.total || 0,
+        })
+      }
+    } catch (err) {
+      console.error("Failed to fetch task requests:", err)
+      toast({ title: "Error", description: "Failed to load task requests", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }, [searchQuery, filterUrgency, toast])
+
+  useEffect(() => {
+    fetchRequests()
+  }, [fetchRequests])
+
   const pendingRequests = requests.filter((r) => r.status === "pending")
-  const approvedRequests = requests.filter((r) => r.status === "approved")
+  const approvedRequests = requests.filter((r) => r.status === "approved" || r.status === "converted")
   const rejectedRequests = requests.filter((r) => r.status === "rejected")
 
-  // Filter requests
-  const filterRequests = (reqs: typeof requests) => {
-    return reqs.filter((req) => {
-      const matchesSearch =
-        req.farmerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        req.agentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        req.description.toLowerCase().includes(searchQuery.toLowerCase())
-
-      const matchesUrgency = filterUrgency === "all" || req.urgency === filterUrgency
-
-      return matchesSearch && matchesUrgency
-    })
-  }
-
-  // Approve request and create task
+  // Approve request
   const handleApproveRequest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!selectedRequest) return
 
     setIsSubmitting(true)
     const formData = new FormData(e.currentTarget)
+    const reviewNotes = formData.get("reviewNotes") as string
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const res = await apiClient.taskRequests.review(selectedRequest.id, {
+        action: "approve",
+        review_notes: reviewNotes || undefined,
+      })
 
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === selectedRequest.id
-          ? {
-              ...r,
-              status: "approved",
-              approvedAt: new Date().toISOString(),
-              approvedBy: "ops-admin",
-              taskId: `task-${Date.now()}`,
-            }
-          : r
-      )
-    )
-
-    setApproveDialogOpen(false)
-    setSelectedRequest(null)
-    setIsSubmitting(false)
-
-    toast({
-      title: "Request Approved",
-      description: "A task has been created and assigned.",
-    })
+      if (res.success) {
+        setApproveDialogOpen(false)
+        setSelectedRequest(null)
+        toast({ title: "Request Approved", description: "The task request has been approved." })
+        fetchRequests()
+      } else {
+        toast({ title: "Error", description: (res as any).error || "Failed to approve", variant: "destructive" })
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to approve request", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Reject request
@@ -221,82 +170,89 @@ export default function TaskRequestsPage() {
     const formData = new FormData(e.currentTarget)
     const reason = formData.get("reason") as string
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 800))
+    try {
+      const res = await apiClient.taskRequests.review(selectedRequest.id, {
+        action: "reject",
+        rejection_reason: reason,
+      })
 
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === selectedRequest.id
-          ? {
-              ...r,
-              status: "rejected",
-              rejectedAt: new Date().toISOString(),
-              rejectedBy: "ops-admin",
-              rejectionReason: reason,
-            }
-          : r
-      )
-    )
-
-    setRejectDialogOpen(false)
-    setSelectedRequest(null)
-    setIsSubmitting(false)
-
-    toast({
-      title: "Request Rejected",
-      description: "The agent will be notified of the rejection.",
-    })
+      if (res.success) {
+        setRejectDialogOpen(false)
+        setSelectedRequest(null)
+        toast({ title: "Request Rejected", description: "The agent will be notified of the rejection." })
+        fetchRequests()
+      } else {
+        toast({ title: "Error", description: (res as any).error || "Failed to reject", variant: "destructive" })
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to reject request", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const RequestCard = ({
     request,
     showActions = true,
   }: {
-    request: (typeof requests)[0]
+    request: TaskRequest
     showActions?: boolean
   }) => (
     <Card className="border-border/50 hover:border-border transition-colors">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Badge variant="outline" className={urgencyStyles[request.urgency]}>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <Badge variant="outline" className={urgencyStyles[request.urgency] || ""}>
                 {request.urgency} urgency
               </Badge>
-              <Badge variant="outline">{issueTypeLabels[request.issueType] || request.issueType}</Badge>
+              <Badge variant="outline">{issueTypeLabels[request.issue_type] || request.issue_type}</Badge>
               {request.status === "approved" && (
                 <Badge className="bg-emerald-100 text-emerald-700 border-0">Approved</Badge>
+              )}
+              {request.status === "converted" && (
+                <Badge className="bg-emerald-100 text-emerald-700 border-0">Converted to Task</Badge>
               )}
               {request.status === "rejected" && (
                 <Badge className="bg-red-100 text-red-700 border-0">Rejected</Badge>
               )}
             </div>
 
-            <h4 className="font-medium text-foreground">
-              Service Request: {request.farmerName}
-            </h4>
-            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-              {request.description}
-            </p>
+            <h4 className="font-medium text-foreground">{request.title}</h4>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{request.description}</p>
 
             <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <User className="h-3 w-3" />
-                From: {request.agentName}
+                From: {request.agent_name}
               </span>
-              <span className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                {request.corridor}
-              </span>
+              {request.farmer_name && (
+                <span className="flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  Farmer: {request.farmer_name}
+                </span>
+              )}
+              {request.corridor_name && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {request.corridor_name}
+                </span>
+              )}
               <span className="flex items-center gap-1">
                 <Calendar className="h-3 w-3" />
-                {new Date(request.submittedAt).toLocaleDateString()}
+                {new Date(request.created_at).toLocaleDateString()}
               </span>
             </div>
 
-            {request.status === "rejected" && request.rejectionReason && (
+            {request.status === "rejected" && request.rejection_reason && (
               <div className="mt-3 p-2 bg-red-50 border border-red-100 rounded text-xs text-red-700">
-                <strong>Rejection Reason:</strong> {request.rejectionReason}
+                <strong>Rejection Reason:</strong> {request.rejection_reason}
+              </div>
+            )}
+
+            {request.reviewed_by_name && request.reviewed_at && (
+              <div className="mt-2 text-xs text-muted-foreground">
+                Reviewed by {request.reviewed_by_name} on {new Date(request.reviewed_at).toLocaleDateString()}
               </div>
             )}
           </div>
@@ -306,10 +262,7 @@ export default function TaskRequestsPage() {
               <Button
                 size="sm"
                 className="bg-emerald-700 hover:bg-emerald-800"
-                onClick={() => {
-                  setSelectedRequest(request)
-                  setApproveDialogOpen(true)
-                }}
+                onClick={() => { setSelectedRequest(request); setApproveDialogOpen(true) }}
               >
                 <ThumbsUp className="h-4 w-4 mr-1" />
                 Approve
@@ -318,10 +271,7 @@ export default function TaskRequestsPage() {
                 size="sm"
                 variant="outline"
                 className="text-red-600 hover:text-red-700 hover:bg-red-50 bg-transparent"
-                onClick={() => {
-                  setSelectedRequest(request)
-                  setRejectDialogOpen(true)
-                }}
+                onClick={() => { setSelectedRequest(request); setRejectDialogOpen(true) }}
               >
                 <ThumbsDown className="h-4 w-4 mr-1" />
                 Reject
@@ -330,10 +280,7 @@ export default function TaskRequestsPage() {
                 size="sm"
                 variant="ghost"
                 className="bg-transparent"
-                onClick={() => {
-                  setSelectedRequest(request)
-                  setViewDialogOpen(true)
-                }}
+                onClick={() => { setSelectedRequest(request); setViewDialogOpen(true) }}
               >
                 <Eye className="h-4 w-4 mr-1" />
                 Details
@@ -341,15 +288,12 @@ export default function TaskRequestsPage() {
             </div>
           )}
 
-          {!showActions && (
+          {(!showActions || request.status !== "pending") && (
             <Button
               size="sm"
               variant="ghost"
               className="bg-transparent"
-              onClick={() => {
-                setSelectedRequest(request)
-                setViewDialogOpen(true)
-              }}
+              onClick={() => { setSelectedRequest(request); setViewDialogOpen(true) }}
             >
               <Eye className="h-4 w-4" />
             </Button>
@@ -363,11 +307,15 @@ export default function TaskRequestsPage() {
     <DashboardLayout allowedRoles={["ops_admin", "super_admin"]}>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold">Task Requests</h1>
-          <p className="text-muted-foreground">
-            Review and approve service requests from field agents
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Task Requests</h1>
+            <p className="text-muted-foreground">Review and approve service requests from field agents</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchRequests} disabled={loading} className="bg-transparent">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -378,42 +326,37 @@ export default function TaskRequestsPage() {
               <Clock className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-amber-600">{pendingRequests.length}</div>
+              <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
               <p className="text-xs text-muted-foreground">Awaiting decision</p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">High Urgency</CardTitle>
               <AlertCircle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {pendingRequests.filter((r) => r.urgency === "high").length}
-              </div>
+              <div className="text-2xl font-bold text-red-600">{stats.highUrgency}</div>
               <p className="text-xs text-muted-foreground">Needs immediate attention</p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Approved</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-emerald-600">{approvedRequests.length}</div>
+              <div className="text-2xl font-bold text-emerald-600">{stats.approved}</div>
               <p className="text-xs text-muted-foreground">Converted to tasks</p>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Rejected</CardTitle>
               <XCircle className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{rejectedRequests.length}</div>
+              <div className="text-2xl font-bold">{stats.rejected}</div>
               <p className="text-xs text-muted-foreground">With reason provided</p>
             </CardContent>
           </Card>
@@ -444,183 +387,109 @@ export default function TaskRequestsPage() {
           </Select>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
         {/* Tabs */}
-        <Tabs defaultValue="pending">
-          <TabsList>
-            <TabsTrigger value="pending">
-              Pending Review
-              {pendingRequests.length > 0 && (
-                <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-700">
-                  {pendingRequests.length}
-                </Badge>
+        {!loading && (
+          <Tabs defaultValue="pending">
+            <TabsList>
+              <TabsTrigger value="pending">
+                Pending Review
+                {pendingRequests.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-700">
+                    {pendingRequests.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="approved">Approved ({approvedRequests.length})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({rejectedRequests.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pending" className="mt-4 space-y-3">
+              {pendingRequests.length > 0 ? (
+                pendingRequests.map((request) => <RequestCard key={request.id} request={request} />)
+              ) : (
+                <Card className="border-border/50">
+                  <CardContent className="p-8 text-center">
+                    <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
+                    <p className="text-lg font-medium">No pending requests</p>
+                    <p className="text-muted-foreground">All service requests have been processed.</p>
+                  </CardContent>
+                </Card>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="approved">Approved ({approvedRequests.length})</TabsTrigger>
-            <TabsTrigger value="rejected">Rejected ({rejectedRequests.length})</TabsTrigger>
-          </TabsList>
+            </TabsContent>
 
-          <TabsContent value="pending" className="mt-4 space-y-3">
-            {filterRequests(pendingRequests).length > 0 ? (
-              filterRequests(pendingRequests).map((request) => (
-                <RequestCard key={request.id} request={request} />
-              ))
-            ) : (
-              <Card className="border-border/50">
-                <CardContent className="p-8 text-center">
-                  <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
-                  <p className="text-lg font-medium">No pending requests</p>
-                  <p className="text-muted-foreground">All service requests have been processed.</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+            <TabsContent value="approved" className="mt-4 space-y-3">
+              {approvedRequests.length > 0 ? (
+                approvedRequests.map((request) => <RequestCard key={request.id} request={request} showActions={false} />)
+              ) : (
+                <Card className="border-border/50">
+                  <CardContent className="p-8 text-center text-muted-foreground">No approved requests yet</CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-          <TabsContent value="approved" className="mt-4 space-y-3">
-            {filterRequests(approvedRequests).length > 0 ? (
-              filterRequests(approvedRequests).map((request) => (
-                <RequestCard key={request.id} request={request} showActions={false} />
-              ))
-            ) : (
-              <Card className="border-border/50">
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  No approved requests yet
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="rejected" className="mt-4 space-y-3">
-            {filterRequests(rejectedRequests).length > 0 ? (
-              filterRequests(rejectedRequests).map((request) => (
-                <RequestCard key={request.id} request={request} showActions={false} />
-              ))
-            ) : (
-              <Card className="border-border/50">
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  No rejected requests
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="rejected" className="mt-4 space-y-3">
+              {rejectedRequests.length > 0 ? (
+                rejectedRequests.map((request) => <RequestCard key={request.id} request={request} showActions={false} />)
+              ) : (
+                <Card className="border-border/50">
+                  <CardContent className="p-8 text-center text-muted-foreground">No rejected requests</CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
 
         {/* Approve Dialog */}
         <Dialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
           <DialogContent className="sm:max-w-[550px]">
             <DialogHeader>
-              <DialogTitle>Approve & Create Task</DialogTitle>
-              <DialogDescription>
-                Review the request and create an official task.
-              </DialogDescription>
+              <DialogTitle>Approve Request</DialogTitle>
+              <DialogDescription>Approve this task request from the field agent.</DialogDescription>
             </DialogHeader>
             {selectedRequest && (
               <form onSubmit={handleApproveRequest}>
                 <div className="space-y-4 py-4">
-                  {/* Request Summary */}
                   <div className="p-3 bg-muted/50 rounded-lg space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Original Request</span>
-                      <Badge variant="outline" className={urgencyStyles[selectedRequest.urgency]}>
+                      <span className="text-sm font-medium">{selectedRequest.title}</span>
+                      <Badge variant="outline" className={urgencyStyles[selectedRequest.urgency] || ""}>
                         {selectedRequest.urgency}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">{selectedRequest.description}</p>
                     <div className="text-xs text-muted-foreground">
-                      From: {selectedRequest.agentName} | Farmer: {selectedRequest.farmerName}
+                      From: {selectedRequest.agent_name}
+                      {selectedRequest.farmer_name && ` | Farmer: ${selectedRequest.farmer_name}`}
                     </div>
                   </div>
 
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <ArrowRight className="h-4 w-4" />
-                      Task Details
-                    </h4>
-
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="taskTitle">Task Title *</Label>
-                        <Input
-                          id="taskTitle"
-                          name="taskTitle"
-                          defaultValue={`${issueTypeLabels[selectedRequest.issueType] || selectedRequest.issueType} - ${selectedRequest.farmerName}`}
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="taskDescription">Task Description</Label>
-                        <Textarea
-                          id="taskDescription"
-                          name="taskDescription"
-                          defaultValue={selectedRequest.description}
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="priority">Priority</Label>
-                          <Select name="priority" defaultValue={selectedRequest.urgency}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="high">High</SelectItem>
-                              <SelectItem value="medium">Medium</SelectItem>
-                              <SelectItem value="low">Low</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="dueDate">Due Date *</Label>
-                          <Input id="dueDate" name="dueDate" type="date" required />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="assignee">Assign To *</Label>
-                        <Select name="assignee" defaultValue={selectedRequest.agentId}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select assignee..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="header-agents" disabled>
-                              -- Field Agents --
-                            </SelectItem>
-                            {assignees.agents.map((agent) => (
-                              <SelectItem key={agent.id} value={agent.id}>
-                                {agent.name} ({agent.cluster})
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="header-partners" disabled>
-                              -- Partners --
-                            </SelectItem>
-                            {assignees.partners.map((partner) => (
-                              <SelectItem key={partner.id} value={partner.id}>
-                                {partner.name} ({partner.type})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reviewNotes">Review Notes (optional)</Label>
+                    <Textarea
+                      id="reviewNotes"
+                      name="reviewNotes"
+                      placeholder="Add any notes about this approval..."
+                      rows={3}
+                    />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setApproveDialogOpen(false)}
-                    className="bg-transparent"
-                  >
+                  <Button type="button" variant="outline" onClick={() => setApproveDialogOpen(false)} className="bg-transparent">
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-emerald-700 hover:bg-emerald-800"
-                  >
-                    {isSubmitting ? "Creating Task..." : "Approve & Create Task"}
+                  <Button type="submit" disabled={isSubmitting} className="bg-emerald-700 hover:bg-emerald-800">
+                    {isSubmitting ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Approving...</>
+                    ) : (
+                      "Approve Request"
+                    )}
                   </Button>
                 </DialogFooter>
               </form>
@@ -633,49 +502,31 @@ export default function TaskRequestsPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Reject Request</DialogTitle>
-              <DialogDescription>
-                Provide a reason for rejecting this request. The agent will be notified.
-              </DialogDescription>
+              <DialogDescription>Provide a reason for rejecting this request. The agent will be notified.</DialogDescription>
             </DialogHeader>
             {selectedRequest && (
               <form onSubmit={handleRejectRequest}>
                 <div className="space-y-4 py-4">
                   <div className="p-3 bg-muted/50 rounded-lg">
-                    <p className="text-sm font-medium">{selectedRequest.farmerName}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {selectedRequest.description}
-                    </p>
+                    <p className="text-sm font-medium">{selectedRequest.title}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{selectedRequest.description}</p>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="reason">Rejection Reason *</Label>
-                    <Textarea
-                      id="reason"
-                      name="reason"
-                      placeholder="Explain why this request is being rejected..."
-                      rows={4}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      This will be visible to the requesting agent.
-                    </p>
+                    <Textarea id="reason" name="reason" placeholder="Explain why this request is being rejected..." rows={4} required />
+                    <p className="text-xs text-muted-foreground">This will be visible to the requesting agent.</p>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setRejectDialogOpen(false)}
-                    className="bg-transparent"
-                  >
+                  <Button type="button" variant="outline" onClick={() => setRejectDialogOpen(false)} className="bg-transparent">
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    variant="destructive"
-                  >
-                    {isSubmitting ? "Rejecting..." : "Reject Request"}
+                  <Button type="submit" disabled={isSubmitting} variant="destructive">
+                    {isSubmitting ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Rejecting...</>
+                    ) : (
+                      "Reject Request"
+                    )}
                   </Button>
                 </DialogFooter>
               </form>
@@ -693,32 +544,40 @@ export default function TaskRequestsPage() {
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-muted-foreground">Farmer</Label>
-                    <p className="font-medium">{selectedRequest.farmerName}</p>
+                    <Label className="text-muted-foreground">Title</Label>
+                    <p className="font-medium">{selectedRequest.title}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Farmer ID</Label>
-                    <p className="font-medium">{selectedRequest.farmerId}</p>
+                    <Label className="text-muted-foreground">Status</Label>
+                    <p className="font-medium capitalize">{selectedRequest.status}</p>
                   </div>
+                  {selectedRequest.farmer_name && (
+                    <div>
+                      <Label className="text-muted-foreground">Farmer</Label>
+                      <p className="font-medium">{selectedRequest.farmer_name}</p>
+                    </div>
+                  )}
                   <div>
                     <Label className="text-muted-foreground">Requesting Agent</Label>
-                    <p className="font-medium">{selectedRequest.agentName}</p>
+                    <p className="font-medium">{selectedRequest.agent_name}</p>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">Corridor</Label>
-                    <p className="font-medium">{selectedRequest.corridor}</p>
-                  </div>
+                  {selectedRequest.corridor_name && (
+                    <div>
+                      <Label className="text-muted-foreground">Corridor</Label>
+                      <p className="font-medium">{selectedRequest.corridor_name}</p>
+                    </div>
+                  )}
                   <div>
                     <Label className="text-muted-foreground">Issue Type</Label>
-                    <p className="font-medium">
-                      {issueTypeLabels[selectedRequest.issueType] || selectedRequest.issueType}
-                    </p>
+                    <p className="font-medium">{issueTypeLabels[selectedRequest.issue_type] || selectedRequest.issue_type}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">Urgency</Label>
-                    <Badge variant="outline" className={urgencyStyles[selectedRequest.urgency]}>
-                      {selectedRequest.urgency}
-                    </Badge>
+                    <Badge variant="outline" className={urgencyStyles[selectedRequest.urgency] || ""}>{selectedRequest.urgency}</Badge>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Submitted</Label>
+                    <p>{new Date(selectedRequest.created_at).toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -727,36 +586,35 @@ export default function TaskRequestsPage() {
                   <p className="mt-1">{selectedRequest.description}</p>
                 </div>
 
-                <div>
-                  <Label className="text-muted-foreground">Submitted</Label>
-                  <p>{new Date(selectedRequest.submittedAt).toLocaleString()}</p>
-                </div>
-
-                {selectedRequest.status === "approved" && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
-                    <p className="text-sm font-medium text-emerald-700">Approved</p>
-                    <p className="text-xs text-emerald-600">
-                      Task ID: {selectedRequest.taskId}
-                    </p>
+                {selectedRequest.review_notes && (
+                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                    <p className="text-sm font-medium text-blue-700">Review Notes</p>
+                    <p className="text-xs text-blue-600">{selectedRequest.review_notes}</p>
                   </div>
                 )}
 
-                {selectedRequest.status === "rejected" && selectedRequest.rejectionReason && (
+                {(selectedRequest.status === "approved" || selectedRequest.status === "converted") && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
+                    <p className="text-sm font-medium text-emerald-700">Approved</p>
+                    {selectedRequest.reviewed_by_name && (
+                      <p className="text-xs text-emerald-600">By: {selectedRequest.reviewed_by_name}</p>
+                    )}
+                    {selectedRequest.service_event_id && (
+                      <p className="text-xs text-emerald-600">Service Event: {selectedRequest.service_event_id}</p>
+                    )}
+                  </div>
+                )}
+
+                {selectedRequest.status === "rejected" && selectedRequest.rejection_reason && (
                   <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
                     <p className="text-sm font-medium text-red-700">Rejected</p>
-                    <p className="text-xs text-red-600">{selectedRequest.rejectionReason}</p>
+                    <p className="text-xs text-red-600">{selectedRequest.rejection_reason}</p>
                   </div>
                 )}
               </div>
             )}
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setViewDialogOpen(false)}
-                className="bg-transparent"
-              >
-                Close
-              </Button>
+              <Button variant="outline" onClick={() => setViewDialogOpen(false)} className="bg-transparent">Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

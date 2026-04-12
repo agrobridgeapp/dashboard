@@ -102,13 +102,14 @@ export default function FarmerRequestsPage() {
     if (!newRequestService || !newRequestDate) return
     setSubmitting(true)
     try {
-      await apiClient.serviceEvents.create({
-        service_type: newRequestService,
-        status: "planned",
-        scheduled_date: newRequestDate,
-        notes: newRequestNotes || undefined,
+      // Submit as a task request that goes through Ops approval (not direct service event creation)
+      await apiClient.taskRequests.create({
+        title: `${newRequestService.replace(/_/g, " ")} service requested`,
+        description: newRequestNotes || `Farmer requests ${newRequestService.replace(/_/g, " ")} service for ${newRequestDate}`,
+        issue_type: serviceToIssueType(newRequestService),
+        urgency: "medium",
       })
-      toast.success("Service request submitted")
+      toast.success("Service request submitted for review")
       setNewRequestService("")
       setNewRequestDate("")
       setNewRequestNotes("")
@@ -120,6 +121,20 @@ export default function FarmerRequestsPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // Map frontend service types to task request issue types
+  const serviceToIssueType = (serviceType: string): string => {
+    const map: Record<string, string> = {
+      land_preparation: "mechanization",
+      planting: "inputs",
+      fertilizer_application: "inputs",
+      pest_control: "pest_control",
+      irrigation: "irrigation",
+      harvesting: "mechanization",
+      transport: "logistics",
+    }
+    return map[serviceType] || "other"
   }
 
   const handleRateService = async () => {

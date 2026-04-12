@@ -1,10 +1,8 @@
 "use client"
 
-import React from "react"
-
-import { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { DashboardLayout } from "@/components/dashboard/shared/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -45,272 +43,187 @@ import {
   MoreHorizontal,
   Users,
   ClipboardList,
-  MapPin,
   Filter,
   Search,
   Eye,
-  Edit,
   XCircle,
-  Pause,
+  RefreshCw,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { apiClient } from "@/lib/api-client"
 
-// Mock tasks created by Operations
-const initialTasks = [
-  {
-    id: "task-001",
-    title: "Complete onboarding for new farmer - Ibrahim Musa",
-    description: "Verify documents, collect GPS coordinates, and complete KYC",
-    type: "farmer_onboarding",
-    priority: "high",
-    dueDate: "2024-01-28",
-    farmer: { id: "farmer-new-001", name: "Ibrahim Musa" },
-    corridor: "Kaduna North",
-    assignedTo: { id: "agent-001", name: "Blessing Okonkwo", type: "field_agent" },
-    status: "not_started",
-    createdBy: "ops-admin",
-    createdAt: "2024-01-25T10:00:00Z",
-    sla: "48 hours",
-  },
-  {
-    id: "task-002",
-    title: "Verify crop yields for contract #1234",
-    description: "Measure and document actual yields for Musa Abdullahi. Take photos of harvest and record weight.",
-    type: "yield_verification",
-    priority: "high",
-    dueDate: "2024-01-30",
-    farmer: { id: "farmer-001", name: "Musa Abdullahi" },
-    corridor: "Kaduna North",
-    assignedTo: { id: "agent-001", name: "Blessing Okonkwo", type: "field_agent" },
-    status: "in_progress",
-    createdBy: "ops-admin",
-    createdAt: "2024-01-24T14:00:00Z",
-    sla: "72 hours",
-  },
-  {
-    id: "task-003",
-    title: "Update GPS coordinates for 5 farms in Zaria cluster",
-    description: "Accurate mapping required for service delivery planning",
-    type: "data_collection",
-    priority: "medium",
-    dueDate: "2024-02-01",
-    farmer: null,
-    corridor: "Kaduna North",
-    assignedTo: { id: "agent-002", name: "Chinedu Eze", type: "field_agent" },
-    status: "not_started",
-    createdBy: "ops-admin",
-    createdAt: "2024-01-26T09:00:00Z",
-    sla: "1 week",
-  },
-  {
-    id: "task-004",
-    title: "Deliver fertilizer to Giwa cluster farms",
-    description: "Coordinate NPK delivery for 15 farms in the cluster",
-    type: "logistics",
-    priority: "high",
-    dueDate: "2024-01-29",
-    farmer: null,
-    corridor: "Kaduna North",
-    assignedTo: { id: "partner-001", name: "SwiftAgri Logistics", type: "partner" },
-    status: "in_progress",
-    createdBy: "ops-admin",
-    createdAt: "2024-01-23T11:00:00Z",
-    sla: "48 hours",
-  },
-  {
-    id: "task-005",
-    title: "Inspect land preparation at Fatima Yusuf farm",
-    description: "Verify partner completed plowing service. Document quality and any issues.",
-    type: "service_inspection",
-    priority: "medium",
-    dueDate: "2024-01-29",
-    farmer: { id: "farmer-002", name: "Fatima Yusuf" },
-    corridor: "Kaduna North",
-    assignedTo: { id: "agent-003", name: "Amina Ibrahim", type: "field_agent" },
-    status: "completed",
-    createdBy: "ops-admin",
-    createdAt: "2024-01-20T08:00:00Z",
-    completedAt: "2024-01-27T16:30:00Z",
-    sla: "24 hours",
-  },
-]
-
-// Mock agents and partners for assignment
-const assignees = {
-  agents: [
-    { id: "agent-001", name: "Blessing Okonkwo", corridor: "Kaduna North", cluster: "Zaria Central" },
-    { id: "agent-002", name: "Chinedu Eze", corridor: "Kaduna North", cluster: "Zaria West" },
-    { id: "agent-003", name: "Amina Ibrahim", corridor: "Kaduna North", cluster: "Giwa East" },
-    { id: "agent-004", name: "Yakubu Danladi", corridor: "Kaduna North", cluster: "Igabi South" },
-  ],
-  partners: [
-    { id: "partner-001", name: "SwiftAgri Logistics", type: "logistics" },
-    { id: "partner-002", name: "FarmTech Mechanization", type: "mechanization" },
-    { id: "partner-003", name: "AgriPro Inputs Ltd", type: "inputs" },
-  ],
-}
-
-const priorityStyles: Record<string, string> = {
-  high: "bg-red-100 text-red-700 border-red-200",
-  medium: "bg-amber-100 text-amber-700 border-amber-200",
-  low: "bg-blue-100 text-blue-700 border-blue-200",
+interface ServiceEvent {
+  id: string
+  service_type: string
+  status: string
+  farmer_id?: string
+  farmer_name?: string
+  partner_id?: string
+  assigned_partner_name?: string
+  corridor_id?: string
+  corridor_name?: string
+  planned_date_start?: string
+  planned_date_end?: string
+  scheduled_date?: string
+  actual_date?: string
+  estimated_cost?: number
+  actual_cost?: number
+  notes?: string
+  sla_window_days?: number
+  sla_deadline?: string
+  is_within_sla?: boolean
+  created_at: string
+  updated_at?: string
 }
 
 const statusStyles: Record<string, { bg: string; text: string }> = {
-  not_started: { bg: "bg-slate-100", text: "text-slate-700" },
-  in_progress: { bg: "bg-blue-100", text: "text-blue-700" },
-  blocked: { bg: "bg-red-100", text: "text-red-700" },
+  planned: { bg: "bg-slate-100", text: "text-slate-700" },
+  scheduled: { bg: "bg-blue-100", text: "text-blue-700" },
+  in_progress: { bg: "bg-amber-100", text: "text-amber-700" },
   completed: { bg: "bg-emerald-100", text: "text-emerald-700" },
+  verified: { bg: "bg-green-100", text: "text-green-700" },
   cancelled: { bg: "bg-gray-100", text: "text-gray-700" },
-  paused: { bg: "bg-amber-100", text: "text-amber-700" },
 }
 
-const taskTypes = [
-  { value: "farmer_onboarding", label: "Farmer Onboarding" },
-  { value: "yield_verification", label: "Yield Verification" },
-  { value: "service_inspection", label: "Service Inspection" },
-  { value: "data_collection", label: "Data Collection" },
-  { value: "logistics", label: "Logistics" },
-  { value: "mechanization", label: "Mechanization" },
-  { value: "inputs_delivery", label: "Inputs Delivery" },
-]
+const statusLabels: Record<string, string> = {
+  planned: "Planned",
+  scheduled: "Scheduled",
+  in_progress: "In Progress",
+  completed: "Completed",
+  verified: "Verified",
+  cancelled: "Cancelled",
+}
+
+const serviceTypeLabels: Record<string, string> = {
+  land_preparation: "Land Preparation",
+  land_prep: "Land Preparation",
+  planting: "Planting",
+  fertilizer_application: "Fertilizer",
+  fertilizer: "Fertilizer",
+  pest_control: "Pest Control",
+  irrigation: "Irrigation",
+  harvesting: "Harvesting",
+  harvest: "Harvesting",
+  transport: "Transport",
+  storage: "Storage",
+  mechanization: "Mechanization",
+  inputs: "Inputs Delivery",
+  inspection: "Inspection",
+  other: "Other",
+}
 
 export default function OpsTasksPage() {
-  const [tasks, setTasks] = useState(initialTasks)
+  const [events, setEvents] = useState<ServiceEvent[]>([])
+  const [loading, setLoading] = useState(true)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<typeof initialTasks[0] | null>(null)
+  const [selectedEvent, setSelectedEvent] = useState<ServiceEvent | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")
-  // Edit form state
-  const [editTitle, setEditTitle] = useState("")
-  const [editDescription, setEditDescription] = useState("")
-  const [editPriority, setEditPriority] = useState("")
-  const [editDueDate, setEditDueDate] = useState("")
-  const [editAssignee, setEditAssignee] = useState("")
+  const [filterSla, setFilterSla] = useState<string>("all")
   const { toast } = useToast()
 
-  // Task statistics
-  const totalTasks = tasks.length
-  const pendingTasks = tasks.filter((t) => t.status !== "completed" && t.status !== "cancelled")
-  const completedTasks = tasks.filter((t) => t.status === "completed")
-  const highPriorityTasks = pendingTasks.filter((t) => t.priority === "high")
-  const overdueTasks = pendingTasks.filter((t) => new Date(t.dueDate) < new Date())
+  const fetchEvents = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params: any = {}
+      if (filterStatus !== "all") params.status = filterStatus
+      if (filterSla !== "all") params.sla = filterSla
+      const res = await apiClient.serviceEvents.list(params)
+      if (res.success) {
+        setEvents(res.data || [])
+      }
+    } catch (err) {
+      console.error("Failed to fetch service events:", err)
+      toast({ title: "Error", description: "Failed to load tasks", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }, [filterStatus, filterSla, toast])
 
-  // Filter tasks
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch =
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.assignedTo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.farmer?.name.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+  useEffect(() => {
+    fetchEvents()
+  }, [fetchEvents])
 
-    const matchesStatus = filterStatus === "all" || task.status === filterStatus
-
-    return matchesSearch && matchesStatus
+  // Filter by search locally
+  const filteredEvents = events.filter((ev) => {
+    if (!searchQuery) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      (ev.service_type || "").toLowerCase().includes(q) ||
+      (ev.farmer_name || "").toLowerCase().includes(q) ||
+      (ev.assigned_partner_name || "").toLowerCase().includes(q) ||
+      (ev.corridor_name || "").toLowerCase().includes(q) ||
+      (ev.notes || "").toLowerCase().includes(q)
+    )
   })
 
-  // Create new task
-  const handleCreateTask = async (e: React.FormEvent<HTMLFormElement>) => {
+  // Stats
+  const totalEvents = events.length
+  const activeEvents = events.filter((e) => !["completed", "verified", "cancelled"].includes(e.status))
+  const completedEvents = events.filter((e) => e.status === "completed" || e.status === "verified")
+  const overdueEvents = events.filter((e) => e.is_within_sla === false && !["completed", "verified", "cancelled"].includes(e.status))
+  const inProgressEvents = events.filter((e) => e.status === "in_progress")
+
+  // Create new service event (ops only)
+  const handleCreateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     const formData = new FormData(e.currentTarget)
-    const assigneeId = formData.get("assignee") as string
-    const assigneeType = formData.get("assigneeType") as string
 
-    let assignee
-    if (assigneeType === "field_agent") {
-      assignee = assignees.agents.find((a) => a.id === assigneeId)
-    } else {
-      assignee = assignees.partners.find((p) => p.id === assigneeId)
+    try {
+      const res = await apiClient.serviceEvents.create({
+        service_type: formData.get("service_type") as string,
+        farmer_id: (formData.get("farmer_id") as string) || undefined,
+        planned_date_start: (formData.get("planned_date_start") as string) || undefined,
+        planned_date_end: (formData.get("planned_date_end") as string) || undefined,
+        estimated_cost: formData.get("estimated_cost") ? Number(formData.get("estimated_cost")) : undefined,
+        sla_window_days: formData.get("sla_window_days") ? Number(formData.get("sla_window_days")) : 7,
+        notes: (formData.get("notes") as string) || undefined,
+      })
+
+      if (res.success) {
+        setCreateDialogOpen(false)
+        toast({ title: "Task Created", description: "Service event has been created successfully." })
+        fetchEvents()
+      } else {
+        toast({ title: "Error", description: (res as any).error || "Failed to create task", variant: "destructive" })
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to create task", variant: "destructive" })
+    } finally {
+      setIsSubmitting(false)
     }
+  }
 
-    const newTask = {
-      id: `task-${Date.now()}`,
-      title: formData.get("title") as string,
-      description: formData.get("description") as string,
-      type: formData.get("type") as string,
-      priority: formData.get("priority") as string,
-      dueDate: formData.get("dueDate") as string,
-      farmer: formData.get("farmerName")
-        ? { id: formData.get("farmerId") as string, name: formData.get("farmerName") as string }
-        : null,
-      corridor: formData.get("corridor") as string,
-      assignedTo: {
-        id: assigneeId,
-        name: assignee?.name || "Unknown",
-        type: assigneeType,
-      },
-      status: "not_started",
-      createdBy: "ops-admin",
-      createdAt: new Date().toISOString(),
-      sla: formData.get("sla") as string,
+  // Verify a completed service event
+  const handleVerify = async (eventId: string) => {
+    try {
+      const res = await apiClient.serviceEvents.verify(eventId, "Verified by ops")
+      if (res.success) {
+        toast({ title: "Verified", description: "Service event has been verified." })
+        setEvents((prev) => prev.map((e) => e.id === eventId ? { ...e, status: "verified" } : e))
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to verify", variant: "destructive" })
     }
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    setTasks((prev) => [newTask, ...prev])
-    setCreateDialogOpen(false)
-    setIsSubmitting(false)
-
-    toast({
-      title: "Task Created",
-      description: `Task assigned to ${assignee?.name}.`,
-    })
   }
 
-  // Update task
-  const handleUpdateTask = async (taskId: string, updates: Partial<typeof initialTasks[0]>) => {
-    setIsSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
-    )
-
-    setEditDialogOpen(false)
-    setSelectedTask(null)
-    setIsSubmitting(false)
-
-    toast({
-      title: "Task Updated",
-      description: "Task details have been updated.",
-    })
-  }
-
-  // Cancel task
-  const handleCancelTask = async (taskId: string) => {
-    setIsSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: "cancelled" } : t))
-    )
-
-    setIsSubmitting(false)
-    toast({
-      title: "Task Cancelled",
-      description: "The task has been cancelled.",
-    })
-  }
-
-  // Pause task
-  const handlePauseTask = async (taskId: string) => {
-    setIsSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: "paused" } : t))
-    )
-
-    setIsSubmitting(false)
-    toast({
-      title: "Task Paused",
-      description: "The task has been paused.",
-    })
+  // Cancel a service event
+  const handleCancel = async (eventId: string) => {
+    try {
+      const res = await apiClient.serviceEvents.cancel(eventId, "Cancelled by ops admin")
+      if (res.success) {
+        toast({ title: "Cancelled", description: "Service event has been cancelled." })
+        setEvents((prev) => prev.map((e) => e.id === eventId ? { ...e, status: "cancelled" } : e))
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to cancel", variant: "destructive" })
+    }
   }
 
   return (
@@ -321,190 +234,108 @@ export default function OpsTasksPage() {
           <div>
             <h1 className="text-3xl font-bold">Task Management</h1>
             <p className="text-muted-foreground">
-              Create, assign, and manage tasks across field agents and partners
+              Create, manage, and track service events across corridors
             </p>
           </div>
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-emerald-700 hover:bg-emerald-800">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Task
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Create New Task</DialogTitle>
-                <DialogDescription>
-                  Create and assign a task to a field agent or partner.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateTask}>
-                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Task Title *</Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      placeholder="e.g., Verify crop yields for contract #1234"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Description *</Label>
-                    <Textarea
-                      id="description"
-                      name="description"
-                      placeholder="Detailed task instructions..."
-                      rows={3}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Task Type *</Label>
-                      <Select name="type" required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {taskTypes.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="priority">Priority *</Label>
-                      <Select name="priority" defaultValue="medium">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="corridor">Corridor *</Label>
-                      <Select name="corridor" defaultValue="Kaduna North">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Kaduna North">Kaduna North Corridor</SelectItem>
-                          <SelectItem value="Kaduna Central">Kaduna Central Corridor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dueDate">Due Date *</Label>
-                      <Input id="dueDate" name="dueDate" type="date" required />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="sla">SLA / Deadline</Label>
-                    <Select name="sla" defaultValue="48 hours">
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="24 hours">24 hours</SelectItem>
-                        <SelectItem value="48 hours">48 hours</SelectItem>
-                        <SelectItem value="72 hours">72 hours</SelectItem>
-                        <SelectItem value="1 week">1 week</SelectItem>
-                        <SelectItem value="2 weeks">2 weeks</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3">Assignment</h4>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={fetchEvents} disabled={loading} className="bg-transparent">
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-emerald-700 hover:bg-emerald-800">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Task
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Create Service Event</DialogTitle>
+                  <DialogDescription>
+                    Create a new service event task. Only ops admins can create tasks directly.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateEvent}>
+                  <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="assigneeType">Assign To *</Label>
-                        <Select name="assigneeType" defaultValue="field_agent">
+                        <Label htmlFor="service_type">Service Type *</Label>
+                        <Select name="service_type" defaultValue="land_preparation">
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="field_agent">Field Agent</SelectItem>
-                            <SelectItem value="partner">Partner</SelectItem>
+                            <SelectItem value="land_preparation">Land Preparation</SelectItem>
+                            <SelectItem value="planting">Planting</SelectItem>
+                            <SelectItem value="fertilizer_application">Fertilizer</SelectItem>
+                            <SelectItem value="pest_control">Pest Control</SelectItem>
+                            <SelectItem value="irrigation">Irrigation</SelectItem>
+                            <SelectItem value="harvesting">Harvesting</SelectItem>
+                            <SelectItem value="transport">Transport</SelectItem>
+                            <SelectItem value="storage">Storage</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="assignee">Select Assignee *</Label>
-                        <Select name="assignee" required>
+                        <Label htmlFor="sla_window_days">SLA Window (days)</Label>
+                        <Select name="sla_window_days" defaultValue="7">
                           <SelectTrigger>
-                            <SelectValue placeholder="Select..." />
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="header-agents" disabled>
-                              -- Field Agents --
-                            </SelectItem>
-                            {assignees.agents.map((agent) => (
-                              <SelectItem key={agent.id} value={agent.id}>
-                                {agent.name} ({agent.cluster})
-                              </SelectItem>
-                            ))}
-                            <SelectItem value="header-partners" disabled>
-                              -- Partners --
-                            </SelectItem>
-                            {assignees.partners.map((partner) => (
-                              <SelectItem key={partner.id} value={partner.id}>
-                                {partner.name} ({partner.type})
-                              </SelectItem>
-                            ))}
+                            <SelectItem value="1">1 day</SelectItem>
+                            <SelectItem value="2">2 days</SelectItem>
+                            <SelectItem value="3">3 days</SelectItem>
+                            <SelectItem value="7">7 days</SelectItem>
+                            <SelectItem value="14">14 days</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3">Related Farmer (Optional)</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="farmerName">Farmer Name</Label>
-                        <Input id="farmerName" name="farmerName" placeholder="e.g., Musa Abdullahi" />
+                        <Label htmlFor="planned_date_start">Planned Start Date</Label>
+                        <Input id="planned_date_start" name="planned_date_start" type="date" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="farmerId">Farmer ID</Label>
-                        <Input id="farmerId" name="farmerId" placeholder="e.g., farmer-001" />
+                        <Label htmlFor="planned_date_end">Planned End Date</Label>
+                        <Input id="planned_date_end" name="planned_date_end" type="date" />
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="farmer_id">Farmer ID (optional)</Label>
+                        <Input id="farmer_id" name="farmer_id" placeholder="e.g., farmer-001" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="estimated_cost">Estimated Cost (₦)</Label>
+                        <Input id="estimated_cost" name="estimated_cost" type="number" placeholder="e.g., 50000" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Notes</Label>
+                      <Textarea id="notes" name="notes" placeholder="Task details or instructions..." rows={3} />
+                    </div>
                   </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCreateDialogOpen(false)}
-                    className="bg-transparent"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="bg-emerald-700 hover:bg-emerald-800"
-                  >
-                    {isSubmitting ? "Creating..." : "Create Task"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)} className="bg-transparent">
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting} className="bg-emerald-700 hover:bg-emerald-800">
+                      {isSubmitting ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
+                      ) : (
+                        "Create Task"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -515,41 +346,41 @@ export default function OpsTasksPage() {
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalTasks}</div>
-              <p className="text-xs text-muted-foreground">All time</p>
+              <div className="text-2xl font-bold">{loading ? "…" : totalEvents}</div>
+              <p className="text-xs text-muted-foreground">All service events</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              <CardTitle className="text-sm font-medium">Active</CardTitle>
               <Clock className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pendingTasks.length}</div>
-              <p className="text-xs text-muted-foreground">In progress or not started</p>
+              <div className="text-2xl font-bold">{loading ? "…" : activeEvents.length}</div>
+              <p className="text-xs text-muted-foreground">Planned / scheduled / in progress</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">High Priority</CardTitle>
-              <AlertCircle className="h-4 w-4 text-red-500" />
+              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+              <AlertCircle className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{highPriorityTasks.length}</div>
-              <p className="text-xs text-muted-foreground">Requires immediate attention</p>
+              <div className="text-2xl font-bold text-blue-600">{loading ? "…" : inProgressEvents.length}</div>
+              <p className="text-xs text-muted-foreground">Currently being executed</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+              <CardTitle className="text-sm font-medium">SLA Overdue</CardTitle>
               <AlertTriangle className="h-4 w-4 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{overdueTasks.length}</div>
-              <p className="text-xs text-muted-foreground">Past due date</p>
+              <div className="text-2xl font-bold text-red-600">{loading ? "…" : overdueEvents.length}</div>
+              <p className="text-xs text-muted-foreground">Past SLA deadline</p>
             </CardContent>
           </Card>
 
@@ -559,8 +390,8 @@ export default function OpsTasksPage() {
               <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-emerald-600">{completedTasks.length}</div>
-              <p className="text-xs text-muted-foreground">This period</p>
+              <div className="text-2xl font-bold text-emerald-600">{loading ? "…" : completedEvents.length}</div>
+              <p className="text-xs text-muted-foreground">Completed &amp; verified</p>
             </CardContent>
           </Card>
         </div>
@@ -570,331 +401,246 @@ export default function OpsTasksPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search tasks, assignees, farmers..."
+              placeholder="Search by service type, farmer, partner..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); }}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="not_started">Not Started</SelectItem>
+              <SelectItem value="planned">Planned</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="blocked">Blocked</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="verified">Verified</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterSla} onValueChange={(v) => { setFilterSla(v); }}>
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <AlertTriangle className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="SLA filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All SLA</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="at_risk">At Risk</SelectItem>
+              <SelectItem value="on_track">On Track</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        )}
+
         {/* Tasks Table */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[220px]">Task</TableHead>
-                  <TableHead className="min-w-[140px]">Assigned To</TableHead>
-                  <TableHead className="min-w-[90px]">Priority</TableHead>
-                  <TableHead className="min-w-[110px]">Due Date</TableHead>
-                  <TableHead className="min-w-[110px]">Status</TableHead>
-                  <TableHead className="text-right min-w-[80px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTasks.map((task) => {
-                  const statusStyle = statusStyles[task.status] || statusStyles.not_started
-                  const isOverdue =
-                    new Date(task.dueDate) < new Date() &&
-                    task.status !== "completed" &&
-                    task.status !== "cancelled"
-
-                  return (
-                    <TableRow key={task.id}>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="font-medium line-clamp-1">{task.title}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Badge variant="outline" className="text-xs">
-                              {taskTypes.find((t) => t.value === task.type)?.label || task.type}
-                            </Badge>
-                            {task.farmer && (
-                              <span className="flex items-center gap-1">
-                                <Users className="h-3 w-3" />
-                                {task.farmer.name}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`h-2 w-2 rounded-full ${
-                              task.assignedTo.type === "field_agent"
-                                ? "bg-blue-500"
-                                : "bg-purple-500"
-                            }`}
-                          />
-                          <span className="text-sm">{task.assignedTo.name}</span>
-                        </div>
-                        <span className="text-xs text-muted-foreground capitalize">
-                          {task.assignedTo.type.replace("_", " ")}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={priorityStyles[task.priority]}>
-                          {task.priority}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-muted-foreground" />
-                          <span className={isOverdue ? "text-red-600 font-medium" : ""}>
-                            {new Date(task.dueDate).toLocaleDateString()}
-                          </span>
-                        </div>
-                        {isOverdue && (
-                          <span className="text-xs text-red-600">Overdue</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`${statusStyle.bg} ${statusStyle.text} border-0`}>
-                          {task.status.replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="bg-transparent">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedTask(task)
-                                setEditTitle(task.title)
-                                setEditDescription(task.description)
-                                setEditPriority(task.priority)
-                                setEditDueDate(task.dueDate)
-                                setEditAssignee(task.assignedTo.id)
-                                setEditDialogOpen(true)
-                              }}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Task
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedTask(task)
-                                setViewDialogOpen(true)
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              View Details
-                            </DropdownMenuItem>
-                            {task.status !== "completed" && task.status !== "cancelled" && (
-                              <>
-                                <DropdownMenuItem onClick={() => handlePauseTask(task.id)}>
-                                  <Pause className="h-4 w-4 mr-2" />
-                                  Pause Task
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleCancelTask(task.id)}
-                                  className="text-red-600"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Cancel Task
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+        {!loading && (
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[180px]">Service</TableHead>
+                      <TableHead className="min-w-[130px]">Farmer</TableHead>
+                      <TableHead className="min-w-[130px]">Partner</TableHead>
+                      <TableHead className="min-w-[100px]">SLA</TableHead>
+                      <TableHead className="min-w-[110px]">Status</TableHead>
+                      <TableHead className="min-w-[100px]">Cost</TableHead>
+                      <TableHead className="text-right min-w-[80px]">Actions</TableHead>
                     </TableRow>
-                  )
-                })}
-                {filteredTasks.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No tasks found matching your filters
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-            </div>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEvents.map((ev) => {
+                      const style = statusStyles[ev.status] || statusStyles.planned
+                      const isOverdue = ev.is_within_sla === false && !["completed", "verified", "cancelled"].includes(ev.status)
 
-        {/* Edit Task Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Task</DialogTitle>
-              <DialogDescription>Update task details, deadline, or reassign.</DialogDescription>
-            </DialogHeader>
-            {selectedTask && (
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Task Title</Label>
-                  <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Priority</Label>
-                    <Select value={editPriority} onValueChange={setEditPriority}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Due Date</Label>
-                    <Input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Reassign To</Label>
-                  <Select value={editAssignee} onValueChange={setEditAssignee}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assignees.agents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          {agent.name} (Agent)
-                        </SelectItem>
-                      ))}
-                      {assignees.partners.map((partner) => (
-                        <SelectItem key={partner.id} value={partner.id}>
-                          {partner.name} (Partner)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      return (
+                        <TableRow key={ev.id}>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <p className="font-medium">
+                                {serviceTypeLabels[ev.service_type] || (ev.service_type || "").replace(/_/g, " ")}
+                              </p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                {ev.corridor_name && (
+                                  <span>{ev.corridor_name}</span>
+                                )}
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {ev.planned_date_start ? new Date(ev.planned_date_start).toLocaleDateString() : new Date(ev.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {ev.farmer_name ? (
+                              <div className="flex items-center gap-2">
+                                <Users className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-sm">{ev.farmer_name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {ev.assigned_partner_name ? (
+                              <span className="text-sm">{ev.assigned_partner_name}</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Unassigned</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {ev.sla_deadline ? (
+                              <div>
+                                <span className={`text-xs ${isOverdue ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
+                                  {new Date(ev.sla_deadline).toLocaleDateString()}
+                                </span>
+                                {isOverdue && (
+                                  <Badge variant="outline" className="ml-1 bg-red-100 text-red-700 border-red-200 text-xs">
+                                    Overdue
+                                  </Badge>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${style.bg} ${style.text} border-0`}>
+                              {statusLabels[ev.status] || ev.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm">
+                              ₦{(Number(ev.actual_cost || ev.estimated_cost || 0)).toLocaleString()}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="bg-transparent">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setSelectedEvent(ev); setViewDialogOpen(true) }}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                {ev.status === "completed" && (
+                                  <DropdownMenuItem onClick={() => handleVerify(ev.id)}>
+                                    <ShieldCheck className="h-4 w-4 mr-2" />
+                                    Verify
+                                  </DropdownMenuItem>
+                                )}
+                                {!["completed", "verified", "cancelled"].includes(ev.status) && (
+                                  <DropdownMenuItem onClick={() => handleCancel(ev.id)} className="text-red-600">
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancel Task
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {filteredEvents.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          No service events found matching your filters
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditDialogOpen(false)} className="bg-transparent">
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (selectedTask) {
-                    const assignee =
-                      assignees.agents.find((a) => a.id === editAssignee) ||
-                      assignees.partners.find((p) => p.id === editAssignee)
-                    handleUpdateTask(selectedTask.id, {
-                      title: editTitle,
-                      description: editDescription,
-                      priority: editPriority,
-                      dueDate: editDueDate,
-                      assignedTo: {
-                        id: editAssignee,
-                        name: assignee?.name || selectedTask.assignedTo.name,
-                        type: assignees.agents.find((a) => a.id === editAssignee)
-                          ? "field_agent"
-                          : "partner",
-                      },
-                    })
-                  }
-                }}
-                disabled={isSubmitting}
-                className="bg-emerald-700 hover:bg-emerald-800"
-              >
-                {isSubmitting ? "Saving..." : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* View Task Details Dialog */}
+        {/* View Details Dialog */}
         <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Task Details</DialogTitle>
+              <DialogTitle>Service Event Details</DialogTitle>
               <DialogDescription>View complete task information</DialogDescription>
             </DialogHeader>
-            {selectedTask && (
+            {selectedEvent && (
               <div className="space-y-4 py-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Title</p>
-                  <p className="text-base">{selectedTask.title}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Description</p>
-                  <p className="text-sm">{selectedTask.description}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Service Type</p>
+                  <p className="text-base capitalize">{serviceTypeLabels[selectedEvent.service_type] || (selectedEvent.service_type || "").replace(/_/g, " ")}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Type</p>
-                    <Badge variant="outline">{selectedTask.type.replace("_", " ")}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Priority</p>
-                    <Badge className={priorityStyles[selectedTask.priority]}>{selectedTask.priority}</Badge>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Due Date</p>
-                    <p className="text-sm">{new Date(selectedTask.dueDate).toLocaleDateString()}</p>
-                  </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Status</p>
-                    <Badge className={`${statusStyles[selectedTask.status].bg} ${statusStyles[selectedTask.status].text}`}>
-                      {selectedTask.status.replace("_", " ")}
+                    <Badge className={`${(statusStyles[selectedEvent.status] || statusStyles.planned).bg} ${(statusStyles[selectedEvent.status] || statusStyles.planned).text}`}>
+                      {statusLabels[selectedEvent.status] || selectedEvent.status}
                     </Badge>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Assigned To</p>
-                    <p className="text-sm">{selectedTask.assignedTo.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{selectedTask.assignedTo.type.replace("_", " ")}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Corridor</p>
-                    <p className="text-sm">{selectedTask.corridor}</p>
-                  </div>
-                </div>
-                {selectedTask.farmer && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Farmer</p>
-                    <p className="text-sm">{selectedTask.farmer.name}</p>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">SLA</p>
-                    <p className="text-sm">{selectedTask.sla}</p>
+                    {selectedEvent.sla_deadline ? (
+                      <p className={`text-sm ${selectedEvent.is_within_sla === false ? "text-red-600 font-semibold" : ""}`}>
+                        {new Date(selectedEvent.sla_deadline).toLocaleDateString()}
+                        {selectedEvent.is_within_sla === false && " (Overdue)"}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">—</p>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Farmer</p>
+                    <p className="text-sm">{selectedEvent.farmer_name || "—"}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Created</p>
-                    <p className="text-sm">{new Date(selectedTask.createdAt).toLocaleDateString()}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Partner</p>
+                    <p className="text-sm">{selectedEvent.assigned_partner_name || "Unassigned"}</p>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Planned Start</p>
+                    <p className="text-sm">{selectedEvent.planned_date_start ? new Date(selectedEvent.planned_date_start).toLocaleDateString() : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Planned End</p>
+                    <p className="text-sm">{selectedEvent.planned_date_end ? new Date(selectedEvent.planned_date_end).toLocaleDateString() : "—"}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Estimated Cost</p>
+                    <p className="text-sm">₦{(Number(selectedEvent.estimated_cost || 0)).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Actual Cost</p>
+                    <p className="text-sm">{selectedEvent.actual_cost ? `₦${Number(selectedEvent.actual_cost).toLocaleString()}` : "—"}</p>
+                  </div>
+                </div>
+                {selectedEvent.notes && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                    <p className="text-sm">{selectedEvent.notes}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Created</p>
+                  <p className="text-sm">{new Date(selectedEvent.created_at).toLocaleString()}</p>
                 </div>
               </div>
             )}
@@ -902,22 +648,12 @@ export default function OpsTasksPage() {
               <Button variant="outline" onClick={() => setViewDialogOpen(false)} className="bg-transparent">
                 Close
               </Button>
-              <Button
-                onClick={() => {
-                  setViewDialogOpen(false)
-                  if (selectedTask) {
-                    setEditTitle(selectedTask.title)
-                    setEditDescription(selectedTask.description)
-                    setEditPriority(selectedTask.priority)
-                    setEditDueDate(selectedTask.dueDate)
-                    setEditAssignee(selectedTask.assignedTo.id)
-                    setEditDialogOpen(true)
-                  }
-                }}
-                className="bg-emerald-700 hover:bg-emerald-800"
-              >
-                Edit Task
-              </Button>
+              {selectedEvent?.status === "completed" && (
+                <Button onClick={() => { handleVerify(selectedEvent.id); setViewDialogOpen(false) }} className="bg-emerald-700 hover:bg-emerald-800">
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Verify
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -229,7 +229,7 @@ class APIClient {
 
   // Service Events API
   serviceEvents = {
-    list: (params?: { cropCycleId?: string; farmerId?: string; status?: string }) =>
+    list: (params?: { cropCycleId?: string; farmerId?: string; status?: string; sla?: string }) =>
       this.request<{ success: boolean; data: any[]; count: number }>("/service-events", { params }),
 
     getById: (id: string) => this.request<{ success: boolean; data: any }>(`/service-events/${id}`),
@@ -239,6 +239,38 @@ class APIClient {
 
     update: (id: string, data: any) =>
       this.request<{ success: boolean; data: any }>(`/service-events/${id}`, { method: "PATCH", body: data }),
+
+    assignPartner: (id: string, partnerId: string) =>
+      this.request<{ success: boolean; data: any }>(`/service-events/${id}/assign`, { method: "POST", body: { partner_id: partnerId } }),
+
+    start: (id: string) =>
+      this.request<{ success: boolean; data: any }>(`/service-events/${id}/start`, { method: "POST", body: {} }),
+
+    complete: (id: string, data?: { notes?: string; proof_image_url?: string; actual_cost?: number }) =>
+      this.request<{ success: boolean; data: any }>(`/service-events/${id}/complete`, { method: "POST", body: data || {} }),
+
+    verify: (id: string, notes?: string) =>
+      this.request<{ success: boolean; data: any }>(`/service-events/${id}/verify`, { method: "POST", body: { notes } }),
+
+    cancel: (id: string, reason?: string) =>
+      this.request<{ success: boolean; data: any }>(`/service-events/${id}/cancel`, { method: "POST", body: { reason } }),
+  }
+
+  // Task Requests API (Agent → Ops workflow)
+  taskRequests = {
+    list: (params?: { status?: string; urgency?: string; agent_id?: string; corridor_id?: string; search?: string; page?: number; limit?: number }) =>
+      this.request<{ success: boolean; data: any[]; count: number }>("/task-requests", { params }),
+
+    getById: (id: string) => this.request<{ success: boolean; data: any }>(`/task-requests/${id}`),
+
+    create: (data: { title: string; description: string; issue_type: string; urgency?: string; farmer_id?: string; corridor_id?: string }) =>
+      this.request<{ success: boolean; data: any }>("/task-requests", { method: "POST", body: data }),
+
+    review: (id: string, data: { action: "approve" | "reject"; review_notes?: string; rejection_reason?: string; create_service_event?: any }) =>
+      this.request<{ success: boolean; data: any }>(`/task-requests/${id}/review`, { method: "POST", body: data }),
+
+    stats: () =>
+      this.request<{ success: boolean; data: { statusCounts: Record<string, number>; urgencyCounts: Record<string, number>; total: number } }>("/task-requests/stats"),
   }
 
   // Planning Interests API
